@@ -4,7 +4,8 @@
 		<TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<OutputType>Exe</OutputType>
+        <OutputType>Exe</OutputType>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
 	</PropertyGroup>
 
 	<ItemGroup>
