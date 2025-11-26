@@ -1,0 +1,17 @@
+# VS
+bin/
+obj/
+.vs/
+.env/
+.idea/
+*.user
+*.suo
+*.log
+packages/
+*.nupkg
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/

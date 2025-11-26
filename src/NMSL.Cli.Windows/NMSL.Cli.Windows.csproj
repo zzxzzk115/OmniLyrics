@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NMSL.Backends.Windows\NMSL.Backends.Windows.csproj" />
+		<ProjectReference Include="..\NMSL.Core\NMSL.Core.csproj" />
+	</ItemGroup>
+
+</Project>
