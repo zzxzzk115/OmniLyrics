@@ -83,7 +83,7 @@ public class PlayerMetadata
                 case "mpris:length":
                     if (kv.Value is long lengthLong)
                     {
-                        length = TimeSpan.FromTicks(lengthLong / 100);
+                        length = TimeSpan.FromMicroseconds(lengthLong);
                     }
                     break;
                 case "mpris:artUrl":
