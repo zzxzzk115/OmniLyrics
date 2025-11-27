@@ -129,10 +129,15 @@ public abstract class BaseLyricsCli
     }
 
 
+    // ====================================================================
+    // Rendering (virtual for subclass override)
+    // ====================================================================
+
     /// <summary>
     /// Redraw lyrics window (called frequently).
+    /// Virtual so subclasses can implement custom rendering styles.
     /// </summary>
-    private void RenderLyricsFrame()
+    protected virtual void RenderLyricsFrame()
     {
         var state = Backend.GetCurrentState();
         if (state is null || CurrentLyrics is null)
@@ -174,16 +179,12 @@ public abstract class BaseLyricsCli
         );
     }
 
-
-    // ================================================================
-    // Console Output (Cross-platform, no cursor operations)
-    // ================================================================
-
     /// <summary>
     /// Fully clears screen & prints header + lyrics block.
     /// Safe for all terminals (Windows/Linux/WSL), no cursor movement.
+    /// Virtual so subclasses may replace full redraw with single-line output.
     /// </summary>
-    protected static async Task RedrawScreenAsync(
+    protected virtual async Task RedrawScreenAsync(
         string line1,
         string line2,
         string line3,
@@ -209,5 +210,15 @@ public abstract class BaseLyricsCli
         {
             ConsoleLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Outputs a single line. Can be used by lightweight CLI modes 
+    /// (such as status bar integration).
+    /// </summary>
+    protected virtual void RenderSingleLine(string text)
+    {
+        Console.WriteLine(text);
+        Console.Out.Flush();
     }
 }
