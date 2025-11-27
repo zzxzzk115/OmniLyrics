@@ -5,9 +5,11 @@ No More Searching Lyrics. A personal attempt to build the lyric tool I always wa
 ## Showcase
 
 Windows Terminal (Default Mode):
+
 ![CLI (Windows Terminal)](./media/images/cli_windows_terminal.png)
 
 Linux Waybar (Line Mode, --mode line):
+
 ![CLI (Linux Waybar)](./media/images/cli_linux_waybar.jpg)
 
 
