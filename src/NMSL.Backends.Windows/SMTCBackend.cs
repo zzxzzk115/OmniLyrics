@@ -29,7 +29,7 @@ public class SMTCBackend : IPlayerBackend
             while (!cancellationToken.IsCancellationRequested)
             {
                 PushState();
-                await Task.Delay(1000, cancellationToken);
+                await Task.Delay(200, cancellationToken);
             }
         }, cancellationToken);
     }
@@ -96,6 +96,10 @@ public class SMTCBackend : IPlayerBackend
                     }
                 }
             }
+        }
+        else
+        {
+            mediaArtists.Add(media.Artist!);
         }
 
         var state = new PlayerState

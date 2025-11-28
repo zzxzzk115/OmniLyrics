@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NMSL.Core", "src\NMSL.Core\NMSL.Core.csproj", "{34159638-C328-40FC-9888-7398C091CFB4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NMSL.Backends.Windows", "src\NMSL.Backends.Windows\NMSL.Backends.Windows.csproj", "{66DD8957-6B70-4FA2-AA8A-DC9B1299A44A}"
@@ -16,6 +14,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NMSL.Cli.Windows", "src\NMSL.Cli.Windows\NMSL.Cli.Windows.csproj", "{5D1EA272-3B75-1D26-EE30-AB3BC5C2ECBC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NMSL.Cli.Linux", "src\NMSL.Cli.Linux\NMSL.Cli.Linux.csproj", "{58FFBD94-45DB-7F1D-2E43-6F348AFBE975}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NMSL.Cli.Mac", "src\NMSL.Cli.macOS\NMSL.Cli.Mac.csproj", "{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,15 +99,21 @@ Global
 		{58FFBD94-45DB-7F1D-2E43-6F348AFBE975}.Release|x64.Build.0 = Release|Any CPU
 		{58FFBD94-45DB-7F1D-2E43-6F348AFBE975}.Release|x86.ActiveCfg = Release|Any CPU
 		{58FFBD94-45DB-7F1D-2E43-6F348AFBE975}.Release|x86.Build.0 = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|x64.Build.0 = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Debug|x86.Build.0 = Debug|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|x64.ActiveCfg = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|x64.Build.0 = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|x86.ActiveCfg = Release|Any CPU
+		{7FA1EA4A-0BE5-4CB0-9545-254C15A125F8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{34159638-C328-40FC-9888-7398C091CFB4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
-		{66DD8957-6B70-4FA2-AA8A-DC9B1299A44A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
-		{0EB6C005-D48F-4221-9574-D2C4CB4A6479} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
-		{A80F3EF4-FBDD-4970-AEFE-FC3A94DE1E0B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {82B5D066-E78B-4593-8CB9-00FBCB5108F6}
