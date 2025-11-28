@@ -1,4 +1,6 @@
-﻿using OmniLyrics.Core;
+﻿using System.Net;
+
+using OmniLyrics.Core;
 using OmniLyrics.Core.Lyrics.Models;
 
 using Lyricify.Lyrics.Helpers;
@@ -47,7 +49,11 @@ public class LyricsService
             {
                 if (line.StartTime == null || string.IsNullOrWhiteSpace(line.Text))
                     continue;
-                result.Add(new LyricsLine(TimeSpan.FromMilliseconds((long)line.StartTime), line.Text));
+
+                // Decode HTML entities to normal characters
+                string decoded = WebUtility.HtmlDecode(line.Text);
+
+                result.Add(new LyricsLine(TimeSpan.FromMilliseconds((long)line.StartTime), decoded));
             }
 
             return result;
