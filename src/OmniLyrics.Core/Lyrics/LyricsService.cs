@@ -5,6 +5,7 @@ using Lyricify.Lyrics.Helpers;
 using Lyricify.Lyrics.Models;
 using Lyricify.Lyrics.Providers.Web.QQMusic;
 using Lyricify.Lyrics.Searchers;
+using Lyricify.Lyrics.Searchers.Helpers;
 
 public class LyricsService
 {
@@ -14,6 +15,9 @@ public class LyricsService
     {
         try
         {
+            // Translate artists to Chinese for better QQ Music search results
+            ArtistHelper.ChineselizeArtists(state.Artists);
+
             var generalSearch = await SearchHelper.Search(new TrackMultiArtistMetadata()
             {
                 Album = state.Album,
@@ -21,7 +25,7 @@ public class LyricsService
                 Artists = state.Artists,
                 DurationMs = (int)state.Duration.TotalMilliseconds,
                 Title = state.Title,
-            }, Searchers.QQMusic, Lyricify.Lyrics.Searchers.Helpers.CompareHelper.MatchType.Medium);
+            }, Searchers.QQMusic, CompareHelper.MatchType.Medium);
 
             if (generalSearch == null)
                 return null;
