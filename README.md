@@ -8,6 +8,10 @@ Windows Terminal (Default Mode):
 
 ![CLI (Windows Terminal)](./media/images/cli_windows_terminal.png)
 
+macOS Terminal (Default Mode):
+
+![CLI (macOS Terminal)](./media/images/cli_macos_terminal.png)
+
 Linux Waybar (Line Mode, --mode line):
 
 ![CLI (Linux Waybar)](./media/images/cli_linux_waybar.jpg)
@@ -52,7 +56,7 @@ dotnet run --project src/NMSL.Cli.Linux --mode line
 Common Backends:
 - [x] SMTC for Windows
 - [x] MPRIS for Linux
-- [ ] NowPlaying for macOS
+- [x] media-control for macOS
 
 Software-specific Backends:
 - [ ] YesPlayMusic
@@ -68,6 +72,9 @@ GUI:
 
 ## Acknowledgement
 - [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper)
+- [WindowsMediaController](https://github.com/DubyaDude/WindowsMediaController)
+- [Tmds.DBus](https://github.com/tmds/Tmds.DBus)
+- [media-control](https://github.com/ungive/media-control)
 
 ## License
 
