@@ -116,8 +116,8 @@ public class MacOSMediaControlBackend : IPlayerBackend
             {
                 Title = title,
                 SourceApp = "media-control",
-                Duration = TimeSpan.FromTicks(duration / 10),
-                Position = TimeSpan.FromTicks(position / 10),
+                Duration = TimeSpan.FromMicroseconds(duration),
+                Position = TimeSpan.FromMicroseconds(position),
                 Playing = playing
             };
 

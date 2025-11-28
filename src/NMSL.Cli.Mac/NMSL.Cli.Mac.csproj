@@ -7,4 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NMSL.Backends.Mac\NMSL.Backends.Mac.csproj" />
+    <ProjectReference Include="..\NMSL.Core\NMSL.Core.csproj" />
+  </ItemGroup>
+
 </Project>
