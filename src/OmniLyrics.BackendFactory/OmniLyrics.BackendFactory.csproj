@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OmniLyrics.Backends.CiderV3\OmniLyrics.Backends.CiderV3.csproj" />
+    <ProjectReference Include="..\OmniLyrics.Backends.Linux\OmniLyrics.Backends.Linux.csproj" />
+    <ProjectReference Include="..\OmniLyrics.Backends.Mac\OmniLyrics.Backends.Mac.csproj" />
+    <ProjectReference Include="..\OmniLyrics.Backends.Windows\OmniLyrics.Backends.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

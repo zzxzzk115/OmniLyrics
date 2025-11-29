@@ -107,6 +107,10 @@ public class MacOSMediaControlBackend : IPlayerBackend
                 ? jPlay.GetBoolean()
                 : _playing;
 
+            string bundle = payload.TryGetProperty("bundleIdentifier", out var xBid)
+                ? xBid.GetString() ?? "" 
+                : (_lastState?.SourceApp ?? "");
+
             // update baseline for timer
             _lastTimestampMicros = timestampMicros;
             _lastElapsedMicros = elapsedMicros;
@@ -120,7 +124,7 @@ public class MacOSMediaControlBackend : IPlayerBackend
             var newState = new PlayerState
             {
                 Title = title,
-                SourceApp = "media-control",
+                SourceApp = bundle,
                 Duration = TimeSpan.FromMicroseconds(durationMicros),
                 Position = TimeSpan.FromMicroseconds(positionMicros),
                 Playing = playing

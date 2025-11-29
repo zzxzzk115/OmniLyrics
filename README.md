@@ -18,7 +18,7 @@ Linux Waybar (Line Mode, --mode line):
 
 
 ## Build Instruction
-Install .NET 8.0
+Download and Install [.NET SDK 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 
 Clone:
 ```bash
@@ -28,6 +28,8 @@ git clone https://github.com/zzxzzk115/OmniLyrics.git
 Build and Run:
 ```bash
 cd OmniLyrics
+
+# Build
 dotnet build
 
 # Run Windows CLI
@@ -55,6 +57,12 @@ dotnet run --project src/OmniLyrics.Cli.Linux --mode line
 },
 ```
 
+## Cider V3 Settings
+
+Settings -> Connectivity -> Manage External Application Access to Cider -> Disable "Require API Tokens"
+
+> Currently, we don't have custom token support.
+
 ## TODO List
 Common Backends:
 - [x] SMTC for Windows
@@ -62,12 +70,13 @@ Common Backends:
 - [x] media-control for macOS
 
 Software-specific Backends:
+- [x] Cider v3 (Commercial Version)
+- [ ] Cider v2 (Open Source Version)
 - [ ] YesPlayMusic
-- [ ] Cider
 
 CLI:
 - [x] Multiple Line Mode (Default)
-- [x] Line Mode (for Waybar)
+- [x] Single Line Mode (for Waybar)
 
 TUI:
 
