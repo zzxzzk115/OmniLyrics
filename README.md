@@ -32,17 +32,14 @@ cd OmniLyrics
 # Build
 dotnet build
 
-# Run Windows CLI
+# Run Windows-only CLI
 dotnet run --project src/OmniLyrics.Cli.Windows
 
-# Run Linux CLI
-dotnet run --project src/OmniLyrics.Cli.Linux
+# Run Non-Windows CLI
+dotnet run --project src/OmniLyrics.Cli
 
-# Run macOS CLI
-dotnet run --project src/OmniLyrics.Cli.Mac
-
-# Run Linux CLI in line mode for waybar
-dotnet run --project src/OmniLyrics.Cli.Linux --mode line
+# Run Non-Windows CLI in Single Line mode (can be used for status bars)
+dotnet run --project src/OmniLyrics.Cli --mode line
 ```
 
 ### Waybar Module Config
