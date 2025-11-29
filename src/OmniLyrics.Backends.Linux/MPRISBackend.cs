@@ -6,10 +6,9 @@ namespace OmniLyrics.Backends.Linux;
 /// <summary>
 /// MPIRS (D-Bus) Backend, only works on Linux
 /// </summary>
-public class MPRISBackend : IPlayerBackend
+public class MPRISBackend : BasePlayerBackend
 {
     private PlayerState? _lastState;
-    public event EventHandler<PlayerState>? OnStateChanged;
 
     private Player? _player;
     private string? _busName;
@@ -19,9 +18,9 @@ public class MPRISBackend : IPlayerBackend
     // This avoids inconsistencies when the user seeks manually.
     private System.Timers.Timer? _pollTimer;
 
-    public PlayerState? GetCurrentState() => _lastState;
+    public override PlayerState? GetCurrentState() => _lastState;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
         var bus = Connection.Session;
 
@@ -102,7 +101,7 @@ public class MPRISBackend : IPlayerBackend
         if (_lastState != null)
         {
             _lastState = null;
-            OnStateChanged?.Invoke(this, null!);
+            EmitStateChanged(null!);
         }
     }
 
@@ -147,7 +146,7 @@ public class MPRISBackend : IPlayerBackend
             if (!StatesEqual(_lastState, newState))
             {
                 _lastState = newState;
-                OnStateChanged?.Invoke(this, newState);
+                EmitStateChanged(newState);
             }
         }
         catch
@@ -198,7 +197,7 @@ public class MPRISBackend : IPlayerBackend
                 if (posTs != state.Position)
                 {
                     state.Position = posTs;
-                    OnStateChanged?.Invoke(this, state);
+                    EmitStateChanged(state);
                 }
             }
             catch
@@ -213,16 +212,16 @@ public class MPRISBackend : IPlayerBackend
     // ---------------------------
     // Controller commands
     // ---------------------------
-    public Task PlayAsync() => _player?.PlayAsync() ?? Task.CompletedTask;
+    public override Task PlayAsync() => _player?.PlayAsync() ?? Task.CompletedTask;
 
-    public Task PauseAsync() => _player?.PauseAsync() ?? Task.CompletedTask;
+    public override Task PauseAsync() => _player?.PauseAsync() ?? Task.CompletedTask;
 
-    public Task TogglePlayPauseAsync() => _player?.PlayPauseAsync() ?? Task.CompletedTask;
+    public override Task TogglePlayPauseAsync() => _player?.PlayPauseAsync() ?? Task.CompletedTask;
 
-    public Task NextAsync() => _player?.NextAsync() ?? Task.CompletedTask;
+    public override Task NextAsync() => _player?.NextAsync() ?? Task.CompletedTask;
 
-    public Task PreviousAsync() => _player?.PreviousAsync() ?? Task.CompletedTask;
+    public override Task PreviousAsync() => _player?.PreviousAsync() ?? Task.CompletedTask;
 
-    public Task SeekAsync(TimeSpan position)
+    public override Task SeekAsync(TimeSpan position)
         => _player?.SetPositionAsync("/", (long)position.TotalMicroseconds) ?? Task.CompletedTask;
 }

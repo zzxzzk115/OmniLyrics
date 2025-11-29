@@ -4,17 +4,16 @@ using OmniLyrics.Backends.Windows;
 
 namespace OmniLyrics.Backends.Dynamic;
 
-public class DynamicBackend : IPlayerBackend, IDisposable
+public class DynamicBackend : BasePlayerBackend, IDisposable
 {
     private IPlayerBackend? _current;
     private CancellationTokenSource _cts = new();
     private Task? _monitorLoop;
+    private CiderV3Api _ciderApiV3 = CiderV3Api.CreateDefault();
 
-    public event EventHandler<PlayerState>? OnStateChanged;
+    public override PlayerState? GetCurrentState() => _current?.GetCurrentState();
 
-    public PlayerState? GetCurrentState() => _current?.GetCurrentState();
-
-    public async Task StartAsync(CancellationToken token)
+    public override async Task StartAsync(CancellationToken token)
     {
         _monitorLoop = Task.Run(() => MonitorLoopAsync(token), token);
         await SwitchBackendIfNeededAsync();
@@ -43,14 +42,15 @@ public class DynamicBackend : IPlayerBackend, IDisposable
         _cts = new();
 
         _current = backend;
-        _current.OnStateChanged += (_, state) => OnStateChanged?.Invoke(this, state);
+        _current.OnStateChanged += (_, state) => EmitStateChanged(state);
         await _current.StartAsync(_cts.Token);
     }
 
     private async Task<(string, IPlayerBackend)> DetectBackendAsync()
     {
         // API-priority
-        if (await CiderV3Api.IsAvailableAsync())
+        var isPlaying = await _ciderApiV3.TryGetIsPlayingAsync();
+        if (isPlaying)
             return ("CiderV3", new CiderV3Backend());
 
         // OS fallback
@@ -61,12 +61,12 @@ public class DynamicBackend : IPlayerBackend, IDisposable
     }
 
     // Commands routed to current backend
-    public Task PlayAsync() => _current?.PlayAsync() ?? Task.CompletedTask;
-    public Task PauseAsync() => _current?.PauseAsync() ?? Task.CompletedTask;
-    public Task TogglePlayPauseAsync() => _current?.TogglePlayPauseAsync() ?? Task.CompletedTask;
-    public Task NextAsync() => _current?.NextAsync() ?? Task.CompletedTask;
-    public Task PreviousAsync() => _current?.PreviousAsync() ?? Task.CompletedTask;
-    public Task SeekAsync(TimeSpan pos) => _current?.SeekAsync(pos) ?? Task.CompletedTask;
+    public override Task PlayAsync() => _current?.PlayAsync() ?? Task.CompletedTask;
+    public override Task PauseAsync() => _current?.PauseAsync() ?? Task.CompletedTask;
+    public override Task TogglePlayPauseAsync() => _current?.TogglePlayPauseAsync() ?? Task.CompletedTask;
+    public override Task NextAsync() => _current?.NextAsync() ?? Task.CompletedTask;
+    public override Task PreviousAsync() => _current?.PreviousAsync() ?? Task.CompletedTask;
+    public override Task SeekAsync(TimeSpan pos) => _current?.SeekAsync(pos) ?? Task.CompletedTask;
 
     public void Dispose()
     {

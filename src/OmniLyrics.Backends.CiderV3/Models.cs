@@ -2,6 +2,15 @@
 
 namespace OmniLyrics.Backends.CiderV3;
 
+public class CiderIsPlayingResponse
+{
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("is_playing")]
+    public bool? IsPlaying { get; set; }
+}
+
 public class CiderNowPlayingResponse
 {
     [JsonPropertyName("status")]

@@ -13,6 +13,11 @@ public interface IMediaSource
     event EventHandler<PlayerState>? OnStateChanged;
 
     /// <summary>
+    /// Emit state change
+    /// </summary>
+    void EmitStateChanged(PlayerState state);
+
+    /// <summary>
     /// Get current media state.
     /// </summary>
     PlayerState? GetCurrentState();

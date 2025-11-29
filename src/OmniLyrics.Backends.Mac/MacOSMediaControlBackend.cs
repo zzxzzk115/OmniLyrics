@@ -4,13 +4,11 @@ using OmniLyrics.Core;
 
 namespace OmniLyrics.Backends.Mac;
 
-public class MacOSMediaControlBackend : IPlayerBackend
+public class MacOSMediaControlBackend : BasePlayerBackend
 {
     private PlayerState? _lastState;
     private Process? _proc;
     private Task? _streamLoop;
-
-    public event EventHandler<PlayerState>? OnStateChanged;
 
     // timestamp / elapsed provided by stream
     private long _lastTimestampMicros = 0;
@@ -21,9 +19,9 @@ public class MacOSMediaControlBackend : IPlayerBackend
     private System.Timers.Timer? _posTimer;
     private long _lastTickMicros = 0;
 
-    public PlayerState? GetCurrentState() => _lastState;
+    public override PlayerState? GetCurrentState() => _lastState;
 
-    public Task StartAsync(CancellationToken token)
+    public override Task StartAsync(CancellationToken token)
     {
         StartStreamLoop(token);
         StartPositionTimer();
@@ -77,7 +75,7 @@ public class MacOSMediaControlBackend : IPlayerBackend
                 payload.EnumerateObject().Count() == 0)
             {
                 _lastState = null;
-                OnStateChanged?.Invoke(this, null!);
+                EmitStateChanged(null!);
                 return;
             }
 
@@ -132,7 +130,7 @@ public class MacOSMediaControlBackend : IPlayerBackend
             newState.Artists.Add(artist);
 
             _lastState = newState;
-            OnStateChanged?.Invoke(this, newState);
+            EmitStateChanged(newState);
         }
         catch
         {
@@ -180,7 +178,7 @@ public class MacOSMediaControlBackend : IPlayerBackend
             updated.Artists.AddRange(state.Artists);
 
             _lastState = updated;
-            OnStateChanged?.Invoke(this, updated);
+            EmitStateChanged(updated);
         };
 
         _posTimer.Start();
@@ -192,12 +190,12 @@ public class MacOSMediaControlBackend : IPlayerBackend
     // --------------------------------------------------------------
     // Control commands
     // --------------------------------------------------------------
-    public Task PlayAsync() => RunCmd("play");
-    public Task PauseAsync() => RunCmd("pause");
-    public Task TogglePlayPauseAsync() => RunCmd("togglePlayPause");
-    public Task NextAsync() => RunCmd("next");
-    public Task PreviousAsync() => RunCmd("previous");
-    public Task SeekAsync(TimeSpan p) => RunCmd($"seek {p.TotalSeconds}");
+    public override Task PlayAsync() => RunCmd("play");
+    public override Task PauseAsync() => RunCmd("pause");
+    public override Task TogglePlayPauseAsync() => RunCmd("togglePlayPause");
+    public override Task NextAsync() => RunCmd("next");
+    public override Task PreviousAsync() => RunCmd("previous");
+    public override Task SeekAsync(TimeSpan p) => RunCmd($"seek {p.TotalSeconds}");
 
     private Task RunCmd(string arg)
     {

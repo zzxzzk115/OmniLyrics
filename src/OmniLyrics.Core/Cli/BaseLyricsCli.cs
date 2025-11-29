@@ -1,4 +1,4 @@
-﻿using OmniLyrics.Core;
+﻿using OmniLyrics.Core.Lyrics;
 using OmniLyrics.Core.Lyrics.Models;
 
 namespace OmniLyrics.Core.Cli;

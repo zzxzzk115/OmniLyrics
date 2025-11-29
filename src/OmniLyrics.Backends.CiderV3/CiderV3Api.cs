@@ -55,6 +55,25 @@ public class CiderV3Api
         }
     }
 
+    public async Task<bool> TryGetIsPlayingAsync(CancellationToken token = default)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(GetPlaybackApiEndpoint("/is-playing"), token);
+            if (!resp.IsSuccessStatusCode)
+                return false;
+
+            var json = await resp.Content.ReadAsStringAsync(token);
+            var data = JsonSerializer.Deserialize<CiderIsPlayingResponse>(json);
+
+            return data?.IsPlaying ?? false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<CiderNowPlayingInfo?> TryGetCurrentSongTypedAsync(
         CancellationToken token = default)
     {

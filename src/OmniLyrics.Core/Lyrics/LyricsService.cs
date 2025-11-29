@@ -1,22 +1,35 @@
-﻿using System.Net;
-
-using OmniLyrics.Core;
-using OmniLyrics.Core.Lyrics.Models;
-
-using Lyricify.Lyrics.Helpers;
+﻿using Lyricify.Lyrics.Helpers;
 using Lyricify.Lyrics.Models;
 using Lyricify.Lyrics.Providers.Web.QQMusic;
 using Lyricify.Lyrics.Searchers;
 using Lyricify.Lyrics.Searchers.Helpers;
+using OmniLyrics.Core.Lyrics.Models;
+using OmniLyrics.Core.Helpers;
+using System.Net;
+
+namespace OmniLyrics.Core.Lyrics;
 
 public class LyricsService
 {
     private readonly Api _api = new();
 
+    private readonly YesPlayMusicApi _yesPlayMusicsLyricsApi = new();
+
     public async Task<List<LyricsLine>?> SearchLyricsAsync(PlayerState state)
     {
         try
         {
+            // Try get lyrics from YesPlayMusic first
+            var app = state.SourceApp ?? "";
+            if (app.StartsWith("YesPlayMusic"))
+            {
+                var embedLyrics = await _yesPlayMusicsLyricsApi.TryGetLyricsAsync();
+                if (embedLyrics != null)
+                {
+                    return ParseLrc(embedLyrics);
+                }
+            }
+
             // Translate artists to Chinese for better QQ Music search results
             ArtistHelper.ChineselizeArtists(state.Artists);
 
@@ -40,27 +53,32 @@ public class LyricsService
             if (lyrics == null)
                 return null;
 
-            var lyricsData = ParseHelper.ParseLyrics(lyrics.Lyric, LyricsRawTypes.Lrc);
-            if (lyricsData == null || lyricsData.Lines == null)
-                return null;
-
-            var result = new List<LyricsLine>();
-            foreach (var line in lyricsData.Lines)
-            {
-                if (line.StartTime == null || string.IsNullOrWhiteSpace(line.Text))
-                    continue;
-
-                // Decode HTML entities to normal characters
-                string decoded = WebUtility.HtmlDecode(line.Text);
-
-                result.Add(new LyricsLine(TimeSpan.FromMilliseconds((long)line.StartTime), decoded));
-            }
-
-            return result;
+            return ParseLrc(lyrics.Lyric);
         }
         catch(Exception)
         {
             return null;
         }
+    }
+
+    private List<LyricsLine> ParseLrc(string lrc)
+    {
+        var lyricsData = ParseHelper.ParseLyrics(lrc, LyricsRawTypes.Lrc);
+        if (lyricsData == null || lyricsData.Lines == null)
+            return null;
+
+        var result = new List<LyricsLine>();
+        foreach (var line in lyricsData.Lines)
+        {
+            if (line.StartTime == null || string.IsNullOrWhiteSpace(line.Text))
+                continue;
+
+            // Decode HTML entities to normal characters
+            string decoded = WebUtility.HtmlDecode(line.Text);
+
+            result.Add(new LyricsLine(TimeSpan.FromMilliseconds((long)line.StartTime), decoded));
+        }
+
+        return result;
     }
 }

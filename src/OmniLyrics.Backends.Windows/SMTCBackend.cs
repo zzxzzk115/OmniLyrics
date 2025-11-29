@@ -1,4 +1,5 @@
 ﻿using OmniLyrics.Core;
+using OmniLyrics.Core.Helpers;
 using Windows.Media.Control;
 using WindowsMediaController;
 
@@ -7,15 +8,15 @@ namespace OmniLyrics.Backends.Windows;
 /// <summary>
 /// SMTC (System Media Transport Controls) backend for media playback and control. Only works on Windows.
 /// </summary>
-public class SMTCBackend : IPlayerBackend
+public class SMTCBackend : BasePlayerBackend
 {
     private readonly MediaManager _mediaManager = new();
     private MediaManager.MediaSession? _currentSession;
     private PlayerState? _lastState;
 
-    public event EventHandler<PlayerState>? OnStateChanged;
+    private YesPlayMusicApi _yesPlayMusicApi = new();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
         _mediaManager.OnFocusedSessionChanged += HandleFocusedSessionChanged;
         _mediaManager.OnAnyMediaPropertyChanged += HandleMediaPropertyChanged;
@@ -34,7 +35,7 @@ public class SMTCBackend : IPlayerBackend
         }, cancellationToken);
     }
 
-    public PlayerState? GetCurrentState() => _lastState;
+    public override PlayerState? GetCurrentState() => _lastState;
 
     private void HandleFocusedSessionChanged(MediaManager.MediaSession? session)
     {
@@ -59,7 +60,29 @@ public class SMTCBackend : IPlayerBackend
 
     private async void PushState()
     {
-        if (_currentSession?.ControlSession == null)
+        if (_currentSession == null)
+        {
+            // Try get playing session
+            try
+            {
+                var sessions = _mediaManager.CurrentMediaSessions;
+                foreach (var session in sessions)
+                {
+                    var playbackInfo = session.Value.ControlSession.GetPlaybackInfo();
+                    if (playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    {
+                        _currentSession = session.Value;
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        if (_currentSession == null)
             return;
 
         var control = _currentSession.ControlSession;
@@ -116,6 +139,23 @@ public class SMTCBackend : IPlayerBackend
             ArtworkHeight = 0
         };
 
+        // Try get player state from YesPlayMusic
+        if (control.SourceAppUserModelId.StartsWith("YesPlayMusic"))
+        {
+            var ypState = await _yesPlayMusicApi.GetStateAsync();
+            if (ypState != null)
+            {
+                // When YesPlayMusic skipped some songs...
+                if (ypState.Title != media.Title)
+                {
+                    state = ypState.DeepCopy();
+                }
+
+                // Override position anyway
+                state.Position = ypState.Position;
+            }
+        }
+
         // Extract artwork size
         try
         {
@@ -138,7 +178,7 @@ public class SMTCBackend : IPlayerBackend
         if (!StatesEqual(_lastState, state))
         {
             _lastState = state;
-            OnStateChanged?.Invoke(this, state);
+            EmitStateChanged(state);
         }
     }
 
@@ -172,42 +212,42 @@ public class SMTCBackend : IPlayerBackend
         return _mediaManager.GetFocusedSession()?.ControlSession;
     }
 
-    public async Task PlayAsync()
+    public override async Task PlayAsync()
     {
         var s = EnsureSession();
         if (s != null)
             await s.TryPlayAsync();
     }
 
-    public async Task PauseAsync()
+    public override async Task PauseAsync()
     {
         var s = EnsureSession();
         if (s != null)
             await s.TryPauseAsync();
     }
 
-    public async Task TogglePlayPauseAsync()
+    public override async Task TogglePlayPauseAsync()
     {
         var s = EnsureSession();
         if (s != null)
             await s.TryTogglePlayPauseAsync();
     }
 
-    public async Task NextAsync()
+    public override async Task NextAsync()
     {
         var s = EnsureSession();
         if (s != null)
             await s.TrySkipNextAsync();
     }
 
-    public async Task PreviousAsync()
+    public override async Task PreviousAsync()
     {
         var s = EnsureSession();
         if (s != null)
             await s.TrySkipPreviousAsync();
     }
 
-    public async Task SeekAsync(TimeSpan position)
+    public override async Task SeekAsync(TimeSpan position)
     {
         var s = EnsureSession();
         if (s != null)

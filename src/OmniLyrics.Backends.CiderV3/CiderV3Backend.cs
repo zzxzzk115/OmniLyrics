@@ -2,17 +2,15 @@
 
 namespace OmniLyrics.Backends.CiderV3;
 
-public class CiderV3Backend : IPlayerBackend
+public class CiderV3Backend : BasePlayerBackend
 {
     private readonly CiderV3Api _api = CiderV3Api.CreateDefault();
     private PlayerState? _lastState;
     private CancellationTokenSource? _cts;
 
-    public event EventHandler<PlayerState>? OnStateChanged;
+    public override PlayerState? GetCurrentState() => _lastState;
 
-    public PlayerState? GetCurrentState() => _lastState;
-
-    public Task StartAsync(CancellationToken token)
+    public override Task StartAsync(CancellationToken token)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         _ = PollLoop(_cts.Token);
@@ -38,7 +36,7 @@ public class CiderV3Backend : IPlayerBackend
             if (_lastState != null)
             {
                 _lastState = null;
-                OnStateChanged?.Invoke(this, null!);
+                EmitStateChanged(null!);
             }
             return;
         }
@@ -65,7 +63,7 @@ public class CiderV3Backend : IPlayerBackend
         _lastState = state;
 
         if (changed)
-            OnStateChanged?.Invoke(this, state);
+            EmitStateChanged(state);
     }
 
     private static bool StatesEqual(PlayerState? a, PlayerState b)
@@ -79,10 +77,10 @@ public class CiderV3Backend : IPlayerBackend
         return true;
     }
 
-    public Task PlayAsync() => _api.PlayAsync();
-    public Task PauseAsync() => _api.PauseAsync();
-    public Task TogglePlayPauseAsync() => _api.ToggleAsync();
-    public Task NextAsync() => _api.NextAsync();
-    public Task PreviousAsync() => _api.PreviousAsync();
-    public Task SeekAsync(TimeSpan position) => _api.SeekAsync(position);
+    public override Task PlayAsync() => _api.PlayAsync();
+    public override Task PauseAsync() => _api.PauseAsync();
+    public override Task TogglePlayPauseAsync() => _api.ToggleAsync();
+    public override Task NextAsync() => _api.NextAsync();
+    public override Task PreviousAsync() => _api.PreviousAsync();
+    public override Task SeekAsync(TimeSpan position) => _api.SeekAsync(position);
 }
