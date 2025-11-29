@@ -1,4 +1,4 @@
-﻿using OmniLyrics.Backends.Windows;
+﻿using OmniLyrics.Backends.Factory;
 using OmniLyrics.Core.Cli;
 
-await LyricsCliRunner.RunAsync(new SMTCBackend(), args);
+await LyricsCliRunner.RunAsync(BackendFactory.Create(), args);

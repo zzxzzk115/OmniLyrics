@@ -1,6 +1,5 @@
-﻿using OmniLyrics.Backends.Linux;
-using OmniLyrics.Backends.Mac;
-using OmniLyrics.Backends.CiderV3;
+﻿using OmniLyrics.Backends.CiderV3;
+using OmniLyrics.Backends.Windows;
 using OmniLyrics.Core;
 
 namespace OmniLyrics.Backends.Factory;
@@ -12,13 +11,8 @@ public static class BackendFactory
         if (CiderV3Api.IsAvailableAsync().Result)
             return new CiderV3Backend();
 
-        if (OperatingSystem.IsLinux())
-            return new MPRISBackend();
-
-        if (OperatingSystem.IsMacOS())
-        {
-            return new MacOSMediaControlBackend();
-        }
+        if (OperatingSystem.IsWindows())
+            return new SMTCBackend();
 
         throw new PlatformNotSupportedException();
     }

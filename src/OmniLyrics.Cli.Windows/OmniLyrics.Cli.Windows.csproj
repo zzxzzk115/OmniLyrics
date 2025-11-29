@@ -11,8 +11,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\OmniLyrics.Backends.Windows\OmniLyrics.Backends.Windows.csproj" />
-		<ProjectReference Include="..\OmniLyrics.Core\OmniLyrics.Core.csproj" />
+	  <ProjectReference Include="..\OmniLyrics.BackendFactory.Windows\OmniLyrics.BackendFactory.Windows.csproj" />
 	</ItemGroup>
 
 </Project>
