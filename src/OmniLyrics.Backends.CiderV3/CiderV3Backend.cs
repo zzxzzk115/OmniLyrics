@@ -68,13 +68,20 @@ public class CiderV3Backend : BasePlayerBackend
 
     private static bool StatesEqual(PlayerState? a, PlayerState b)
     {
-        if (a == null) return false;
-        if (a.Title != b.Title) return false;
-        if (a.Playing != b.Playing) return false;
-        if (a.Duration != b.Duration) return false;
-        if (a.Artists.Count != b.Artists.Count) return false;
-        if (a.Artists.Count != 0 && a.Artists[0] != b.Artists[0]) return false;
-        return true;
+        if (a is null) return false;
+
+        if (a.Artists.Count != b.Artists.Count)
+            return false;
+
+        for (int i = 0; i < a.Artists.Count; i++)
+            if (a.Artists[i] != b.Artists[i])
+                return false;
+
+        return a.Title == b.Title &&
+               a.Album == b.Album &&
+               a.Duration == b.Duration &&
+               a.Playing == b.Playing &&
+               a.SourceApp == b.SourceApp;
     }
 
     public override Task PlayAsync() => _api.PlayAsync();

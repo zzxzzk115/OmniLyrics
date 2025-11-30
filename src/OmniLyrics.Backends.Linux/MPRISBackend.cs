@@ -147,23 +147,6 @@ public class MPRISBackend : BasePlayerBackend
             if (meta.Length.HasValue)
                 newState.Duration = meta.Length.Value;
 
-            // Override position with YesPlayMusic
-            if (newState.SourceApp.Contains("yesplaymusic", StringComparison.OrdinalIgnoreCase))
-            {
-                var ypState = await _yesPlayMusicApi.GetStateAsync();
-                if (ypState != null)
-                {
-                    // When YesPlayMusic skipped some songs...
-                    if (ypState.Title != meta.Title)
-                    {
-                        newState = ypState.DeepCopy();
-                    }
-
-                    // Override position anyway
-                    newState.Position = ypState.Position;
-                }
-            }
-
             if (!StatesEqual(_lastState, newState))
             {
                 _lastState = newState;
@@ -215,7 +198,25 @@ public class MPRISBackend : BasePlayerBackend
                 var newPos = await _player.GetPositionAsync();
                 var posTs = TimeSpan.FromMicroseconds(newPos);
 
-                if (posTs != state.Position)
+
+                // Try override position with YesPlayMusic first
+                var app = state.SourceApp ?? "";
+                if (app.Contains("yesplaymusic", StringComparison.OrdinalIgnoreCase))
+                {
+                    var ypState = await _yesPlayMusicApi.GetStateAsync();
+                    if (ypState != null)
+                    {
+                        // When YesPlayMusic skipped some songs...
+                        if (ypState.Title != state.Title)
+                        {
+                            state = ypState.DeepCopy();
+                        }
+
+                        // Override position anyway
+                        state.Position = ypState.Position;
+                    }
+                }
+                else if (posTs != state.Position)
                 {
                     state.Position = posTs;
                     EmitStateChanged(state);
