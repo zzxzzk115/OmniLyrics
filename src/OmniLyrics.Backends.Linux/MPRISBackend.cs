@@ -69,6 +69,25 @@ public class MPRISBackend : BasePlayerBackend
 
         // Try connect immediately if already running
         await ChooseBestPlayerAsync(cancellationToken);
+
+        // ----------------------------------------------------------------------
+        // Fallback polling in case DBus watch does not fire (some environments)
+        // ----------------------------------------------------------------------
+        _ = Task.Run(async () =>
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(1000, cancellationToken);
+                    await ChooseBestPlayerAsync(cancellationToken);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }, cancellationToken);
     }
 
     // Pick the best MPRIS player when multiple exist
@@ -88,33 +107,44 @@ public class MPRISBackend : BasePlayerBackend
             return;
         }
 
+        string? selected = null;
+
         // 1. Prefer YesPlayMusic
         var ypm = players.FirstOrDefault(p => p.Contains(MPRISStrings.YesPlayMusic, StringComparison.OrdinalIgnoreCase));
         if (ypm != null)
         {
-            await ConnectToPlayerAsync(ypm, token);
-            return;
+            selected = ypm;
         }
-
-        // 2. Prefer the one that is playing
-        foreach (var p in players)
+        else
         {
-            try
+            // 2. Prefer the one that is playing
+            foreach (var p in players)
             {
-                var playerProxy = bus.CreateProxy<IPlayer>(p, MPRISStrings.MediaPlayerPath);
-                var player = new Player(p, playerProxy);
-                var status = await player.GetPlaybackStatusAsync();
-                if (status == "Playing")
+                try
                 {
-                    await ConnectToPlayerAsync(p, token);
-                    return;
+                    var playerProxy = bus.CreateProxy<IPlayer>(p, MPRISStrings.MediaPlayerPath);
+                    var player = new Player(p, playerProxy);
+                    var status = await player.GetPlaybackStatusAsync();
+                    if (status == "Playing")
+                    {
+                        selected = p;
+                        break;
+                    }
                 }
+                catch { }
             }
-            catch { }
+
+            // 3. Fallback: pick first
+            selected ??= players[0];
         }
 
-        // 3. Fallback: pick first
-        await ConnectToPlayerAsync(players[0], token);
+        // ---------------------------------------------------------
+        // Avoid unnecessary reconnect if same busName selected
+        // ---------------------------------------------------------
+        if (selected == _busName)
+            return;
+
+        await ConnectToPlayerAsync(selected, token);
     }
 
     private async Task ConnectToPlayerAsync(string busName, CancellationToken cancellationToken)
