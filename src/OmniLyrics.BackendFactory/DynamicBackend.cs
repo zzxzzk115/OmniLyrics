@@ -11,9 +11,6 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
     private IPlayerBackend? _current;
 
     private CancellationTokenSource _cts = new();
-    private Task? _monitorLoop;
-
-    private readonly CiderV3Api _ciderApiV3 = CiderV3Api.CreateDefault();
 
     public DynamicBackend()
     {
