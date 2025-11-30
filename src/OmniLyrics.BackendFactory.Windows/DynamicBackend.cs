@@ -21,6 +21,8 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
 
         foreach (var kv in _backends)
             kv.Value.OnStateChanged += HandleSubBackendStateChanged;
+
+        _current = _backends.Values.First();
     }
 
     public override PlayerState? GetCurrentState() => _current?.GetCurrentState();

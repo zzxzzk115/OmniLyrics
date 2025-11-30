@@ -108,7 +108,7 @@ public class CiderV3Api
             }
             else
             {
-                content = new StringContent("", Encoding.UTF8, "application/json");
+                content = new StringContent("{}", Encoding.UTF8, "application/json");
             }
 
             await _http.PostAsync(GetPlaybackApiEndpoint(path), content);

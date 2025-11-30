@@ -1,26 +1,85 @@
-﻿namespace OmniLyrics.Core.Cli;
-
-public static class CliModeParser
+﻿namespace OmniLyrics.Core.Cli
 {
-    public static string Parse(string[] args)
+    public static class CliParser
     {
-        string mode = "default";
-
-        for (int i = 0; i < args.Length; i++)
+        public static CliOptions Parse(string[] args)
         {
-            var arg = args[i];
+            var opts = new CliOptions();
 
-            if (arg == "--mode" || arg == "-m")
+            for (int i = 0; i < args.Length; i++)
             {
-                if (i + 1 < args.Length)
-                    mode = args[i + 1].ToLowerInvariant();
+                var arg = args[i];
+
+                // mode
+                if (arg == "--mode" || arg == "-m")
+                {
+                    if (i + 1 < args.Length)
+                        opts.Mode = args[++i].ToLowerInvariant();
+                    continue;
+                }
+                if (arg.StartsWith("--mode="))
+                {
+                    opts.Mode = arg.Substring("--mode=".Length).ToLowerInvariant();
+                    continue;
+                }
+
+                // control
+                if (arg == "--control" || arg == "-c")
+                {
+                    if (i + 1 < args.Length)
+                        opts.Control = ParseControl(args[++i]);
+                    continue;
+                }
+                if (arg.StartsWith("--control="))
+                {
+                    opts.Control = ParseControl(arg.Substring("--control=".Length));
+                    continue;
+                }
+
+                // seek seconds
+                if (opts.Control == ControlAction.Seek)
+                {
+                    if (float.TryParse(arg, out float sec))
+                        opts.SeekPositionSeconds = sec;
+                    continue;
+                }
             }
-            else if (arg.StartsWith("--mode="))
-            {
-                mode = arg.Substring("--mode=".Length).ToLowerInvariant();
-            }
+
+            return opts;
         }
 
-        return mode;
+        private static ControlAction ParseControl(string text)
+        {
+            return text.ToLowerInvariant() switch
+            {
+                "play" => ControlAction.Play,
+                "pause" => ControlAction.Pause,
+                "toggle" => ControlAction.Toggle,
+                "prev" => ControlAction.Prev,
+                "next" => ControlAction.Next,
+                "seek" => ControlAction.Seek,
+                _ => ControlAction.None
+            };
+        }
     }
+}
+
+public enum ControlAction
+{
+    None,
+    Play,
+    Pause,
+    Toggle,
+    Prev,
+    Next,
+    Seek
+}
+
+public sealed class CliOptions
+{
+    public string Mode { get; set; } = "default";
+
+    public ControlAction Control { get; set; } = ControlAction.None;
+
+    public float? SeekPositionSeconds { get; set; }
 }

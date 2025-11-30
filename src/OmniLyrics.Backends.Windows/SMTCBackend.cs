@@ -269,7 +269,7 @@ public class SMTCBackend : BasePlayerBackend
         var s = EnsureSession();
         if (s != null)
         {
-            await s.TryChangePlaybackPositionAsync((long)(ulong)position.Ticks);
+            await s.TryChangePlaybackPositionAsync(position.Ticks);
         }
     }
 }
