@@ -67,6 +67,11 @@ public abstract class BaseLyricsCli
         // Normalize identifiers for change detection
         string normTitle = (state.Title ?? "").Trim().ToLowerInvariant();
         string normArtist = (state.Artists.FirstOrDefault() ?? "").Trim().ToLowerInvariant();
+
+        // Skip errors
+        if (string.IsNullOrEmpty(normTitle) || string.IsNullOrEmpty(normArtist))
+            return;
+
         string songId = $"{normTitle}|{normArtist}";
         string cacheKey = $"{state.SourceApp}|{songId}";
 
