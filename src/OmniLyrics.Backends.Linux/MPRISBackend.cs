@@ -1,4 +1,5 @@
-﻿using OmniLyrics.Core;
+﻿using System.Diagnostics;
+using OmniLyrics.Core;
 using Tmds.DBus;
 
 namespace OmniLyrics.Backends.Linux;
@@ -38,13 +39,13 @@ public class MPRISBackend : BasePlayerBackend
 
             if (!string.IsNullOrEmpty(newOwner) && string.IsNullOrEmpty(oldOwner))
             {
-                Console.WriteLine($"Player appeared: {name}");
+                Debug.WriteLine($"Player appeared: {name}");
                 _ = ConnectToPlayerAsync(name, cancellationToken);
             }
 
             if (!string.IsNullOrEmpty(oldOwner) && string.IsNullOrEmpty(newOwner))
             {
-                Console.WriteLine($"Player disappeared: {name}");
+                Debug.WriteLine($"Player disappeared: {name}");
                 if (_busName == name)
                     DisconnectPlayer();
             }
@@ -77,7 +78,7 @@ public class MPRISBackend : BasePlayerBackend
         // Subscribe to property changes from the Player interface
         _propertyWatcher = await playerProxy.WatchPropertiesAsync(HandlePropertyChanged);
 
-        Console.WriteLine($"[MPRIS] Connected to {_busName}");
+        Debug.WriteLine($"[MPRIS] Connected to {_busName}");
 
         // Start polling of the current playback position
         StartPollingTimer();

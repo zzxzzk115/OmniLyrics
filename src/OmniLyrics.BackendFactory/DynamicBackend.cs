@@ -1,4 +1,5 @@
-﻿using OmniLyrics.Core;
+﻿using System.Diagnostics;
+using OmniLyrics.Core;
 using OmniLyrics.Backends.CiderV3;
 using OmniLyrics.Backends.Linux;
 using OmniLyrics.Backends.Mac;
@@ -37,7 +38,7 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
             return;
 
         // Switch
-        Console.WriteLine($"[DynamicBackend] Switching backend → {backendName}");
+        Debug.WriteLine($"[DynamicBackend] Switching backend → {backendName}");
 
         _cts.Cancel();
         _cts = new();

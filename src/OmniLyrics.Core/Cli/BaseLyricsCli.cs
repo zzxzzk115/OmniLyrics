@@ -24,6 +24,9 @@ public abstract class BaseLyricsCli
     protected string LastSongId = "";
     protected int LastCenterIndex = -999;
 
+    // Added: per-app lyric cache
+    protected readonly Dictionary<string, List<LyricsLine>?> LyricsCache = new();
+
     protected BaseLyricsCli(IPlayerBackend backend)
     {
         Backend = backend;
@@ -58,13 +61,14 @@ public abstract class BaseLyricsCli
     /// </summary>
     private async Task HandleBackendStateChangedAsync(PlayerState? state)
     {
-        if (state is null || !state.Playing)
+        if (state is null)
             return;
 
         // Normalize identifiers for change detection
         string normTitle = (state.Title ?? "").Trim().ToLowerInvariant();
         string normArtist = (state.Artists.FirstOrDefault() ?? "").Trim().ToLowerInvariant();
         string songId = $"{normTitle}|{normArtist}";
+        string cacheKey = $"{state.SourceApp}|{songId}";
 
         bool shouldLoadLyrics = false;
         string artistsText = "";
@@ -95,6 +99,21 @@ public abstract class BaseLyricsCli
         if (!shouldLoadLyrics)
             return;
 
+        // Check cache first
+        if (LyricsCache.TryGetValue(cacheKey, out var cachedLyrics))
+        {
+            CurrentLyrics = cachedLyrics;
+
+            await RedrawScreenAsync(
+                "Now Playing:",
+                $"{artistsText} - {state.Title}",
+                cachedLyrics == null ? "(No lyrics found)" : "",
+                null
+            );
+
+            return;
+        }
+
         // Immediately show header (Searching...)
         await RedrawScreenAsync(
             "Now Playing:",
@@ -105,6 +124,9 @@ public abstract class BaseLyricsCli
 
         // Load lyrics
         var parsed = await LyricsService.SearchLyricsAsync(state);
+
+        // Store result in cache
+        LyricsCache[cacheKey] = parsed;
 
         if (parsed != null)
         {
@@ -119,6 +141,8 @@ public abstract class BaseLyricsCli
         }
         else
         {
+            CurrentLyrics = null;
+
             await RedrawScreenAsync(
                 "Now Playing:",
                 $"{artistsText} - {state.Title}",
@@ -128,11 +152,6 @@ public abstract class BaseLyricsCli
         }
     }
 
-
-    // ====================================================================
-    // Rendering (virtual for subclass override)
-    // ====================================================================
-
     /// <summary>
     /// Redraw lyrics window (called frequently).
     /// Virtual so subclasses can implement custom rendering styles.
@@ -140,7 +159,20 @@ public abstract class BaseLyricsCli
     protected virtual void RenderLyricsFrame()
     {
         var state = Backend.GetCurrentState();
-        if (state is null || CurrentLyrics is null)
+        if (state is null)
+            return;
+
+        // Retrieve correct cached lyrics for current backend
+        string normTitle = (state.Title ?? "").Trim().ToLowerInvariant();
+        string normArtist = (state.Artists.FirstOrDefault() ?? "").Trim().ToLowerInvariant();
+        string songId = $"{normTitle}|{normArtist}";
+        string cacheKey = $"{state.SourceApp}|{songId}";
+
+        if (!LyricsCache.TryGetValue(cacheKey, out var cachedLyrics))
+            return;
+
+        CurrentLyrics = cachedLyrics;
+        if (CurrentLyrics is null)
             return;
 
         TimeSpan pos = state.Position;

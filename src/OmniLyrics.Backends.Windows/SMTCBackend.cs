@@ -60,105 +60,115 @@ public class SMTCBackend : BasePlayerBackend
 
     private async void PushState()
     {
-        if (_currentSession == null)
-        {
-            // Try get playing session
-            try
-            {
-                var sessions = _mediaManager.CurrentMediaSessions;
-                foreach (var session in sessions)
-                {
-                    var playbackInfo = session.Value.ControlSession.GetPlaybackInfo();
-                    if (playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
-                    {
-                        _currentSession = session.Value;
-                        break;
-                    }
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        if (_currentSession == null)
-            return;
-
-        var control = _currentSession.ControlSession;
-
-        var playback = control.GetPlaybackInfo();
-        var timeline = control.GetTimelineProperties();
-
-        // Get media properties
-        var media = await control.TryGetMediaPropertiesAsync();
-
-        // Consider Apple Music, Artist = ArtistName1 & ArtistName2 — Album/Title( - Single)
-        var mediaArtists = new List<string>();
-        var mediaAlbum = media.AlbumTitle;
-        if (media.Artist != null && media.Artist.Contains(" — "))
-        {
-            var parts = media.Artist.Split(" — ");
-            var artists = parts[0].Trim().Split("&");
-            foreach (var artist in artists)
-            {
-                mediaArtists.Add(artist.Trim());
-            }
-            if (string.IsNullOrEmpty(media.AlbumTitle))
-            {
-                mediaAlbum = parts[1].Trim();
-                var more = mediaAlbum.Split(" - ");
-                if (more.Length == 1) // Ignore Single EP.
-                {
-                    mediaAlbum = more[0].Trim();
-
-                    // If album equals title, clear it.
-                    if (mediaAlbum.Equals(media.Title, StringComparison.OrdinalIgnoreCase))
-                    {
-                        mediaAlbum = string.Empty;
-                    }
-                }
-            }
-        }
-        else
-        {
-            mediaArtists.Add(media.Artist!);
-        }
-
-        var state = new PlayerState
-        {
-            Title = media.Title,
-            Artists = mediaArtists,
-            Album = mediaAlbum,
-            Playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
-            Position = timeline.Position,
-            Duration = timeline.EndTime - timeline.StartTime,
-            SourceApp = control.SourceAppUserModelId,
-            ArtworkUrl = null,          // SMTC doesn't provide URL
-            ArtworkWidth = 0,           // will be filled below
-            ArtworkHeight = 0
-        };
-
-        // Try get player state from YesPlayMusic
-        if (control.SourceAppUserModelId.StartsWith("YesPlayMusic"))
-        {
-            var ypState = await _yesPlayMusicApi.GetStateAsync();
-            if (ypState != null)
-            {
-                // When YesPlayMusic skipped some songs...
-                if (ypState.Title != media.Title)
-                {
-                    state = ypState.DeepCopy();
-                }
-
-                // Override position anyway
-                state.Position = ypState.Position;
-            }
-        }
-
-        // Extract artwork size
         try
         {
+            var sessions = _mediaManager.CurrentMediaSessions;
+
+            // Try get playing session
+            foreach (var session in sessions)
+            {
+                var playbackInfo = session.Value.ControlSession.GetPlaybackInfo();
+                if (playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                {
+                    _currentSession = session.Value;
+                    break;
+                }
+            }
+
+            if (_currentSession == null)
+                return;
+
+            // Skip Cider
+            if (_currentSession.ControlSession.SourceAppUserModelId.StartsWith("Cider"))
+            {
+                // Select aother non-Cider session
+                foreach (var session in sessions)
+                {
+                    if (session.Value.ControlSession.SourceAppUserModelId.StartsWith("Cider"))
+                        continue;
+
+                    _currentSession = session.Value;
+                    break;
+                }
+
+                // Select failed, return
+                if (_currentSession.ControlSession.SourceAppUserModelId.StartsWith("Cider"))
+                {
+                    return;
+                }
+            }
+
+            var control = _currentSession.ControlSession;
+
+            var playback = control.GetPlaybackInfo();
+            var timeline = control.GetTimelineProperties();
+
+            // Get media properties
+            var media = await control.TryGetMediaPropertiesAsync();
+
+            // Consider Apple Music, Artist = ArtistName1 & ArtistName2 — Album/Title( - Single)
+            var mediaArtists = new List<string>();
+            var mediaAlbum = media.AlbumTitle;
+            if (media.Artist != null && media.Artist.Contains(" — "))
+            {
+                var parts = media.Artist.Split(" — ");
+                var artists = parts[0].Trim().Split("&");
+                foreach (var artist in artists)
+                {
+                    mediaArtists.Add(artist.Trim());
+                }
+                if (string.IsNullOrEmpty(media.AlbumTitle))
+                {
+                    mediaAlbum = parts[1].Trim();
+                    var more = mediaAlbum.Split(" - ");
+                    if (more.Length == 1) // Ignore Single EP.
+                    {
+                        mediaAlbum = more[0].Trim();
+
+                        // If album equals title, clear it.
+                        if (mediaAlbum.Equals(media.Title, StringComparison.OrdinalIgnoreCase))
+                        {
+                            mediaAlbum = string.Empty;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                mediaArtists.Add(media.Artist!);
+            }
+
+            var state = new PlayerState
+            {
+                Title = media.Title,
+                Artists = mediaArtists,
+                Album = mediaAlbum,
+                Playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
+                Position = timeline.Position,
+                Duration = timeline.EndTime - timeline.StartTime,
+                SourceApp = control.SourceAppUserModelId,
+                ArtworkUrl = null,          // SMTC doesn't provide URL
+                ArtworkWidth = 0,           // will be filled below
+                ArtworkHeight = 0
+            };
+
+            // Try get player state from YesPlayMusic
+            if (control.SourceAppUserModelId.StartsWith("YesPlayMusic"))
+            {
+                var ypState = await _yesPlayMusicApi.GetStateAsync();
+                if (ypState != null)
+                {
+                    // When YesPlayMusic skipped some songs...
+                    if (ypState.Title != media.Title)
+                    {
+                        state = ypState.DeepCopy();
+                    }
+
+                    // Override position anyway
+                    state.Position = ypState.Position;
+                }
+            }
+
             var thumb = media.Thumbnail;
             if (thumb != null)
             {
@@ -169,16 +179,16 @@ public class SMTCBackend : BasePlayerBackend
                 state.ArtworkWidth = img.Width;
                 state.ArtworkHeight = img.Height;
             }
+
+            if (!StatesEqual(_lastState, state))
+            {
+                _lastState = state;
+                EmitStateChanged(state);
+            }
         }
         catch
         {
-            // ignore thumbnail errors (common for some apps)
-        }
-
-        if (!StatesEqual(_lastState, state))
-        {
-            _lastState = state;
-            EmitStateChanged(state);
+            // ignored
         }
     }
 
