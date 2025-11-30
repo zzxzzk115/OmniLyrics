@@ -17,7 +17,6 @@ public class LineLyricsCli : BaseLyricsCli
             return;
 
         LastCenterIndex = idx;
-        Console.Clear();
         RenderSingleLine(CurrentLyrics[idx].Text);
     }
 

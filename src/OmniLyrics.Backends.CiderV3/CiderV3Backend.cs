@@ -8,6 +8,9 @@ public class CiderV3Backend : BasePlayerBackend
     private PlayerState? _lastState;
     private CancellationTokenSource? _cts;
 
+    private TimeSpan _lastPos = TimeSpan.Zero;
+    private DateTime _lastPosTime = DateTime.MinValue;
+
     public override PlayerState? GetCurrentState() => _lastState;
 
     public override Task StartAsync(CancellationToken token)
@@ -23,7 +26,6 @@ public class CiderV3Backend : BasePlayerBackend
         {
             try { await QueryAsync(); }
             catch { }
-
             await Task.Delay(200, token);
         }
     }
@@ -44,7 +46,6 @@ public class CiderV3Backend : BasePlayerBackend
         var state = new PlayerState
         {
             Title = info.Name ?? "",
-            Playing = info.IsPlaying ?? (info.CurrentPlaybackTime > 0),
             Duration = TimeSpan.FromMilliseconds(info.DurationInMillis),
             Position = TimeSpan.FromSeconds(info.CurrentPlaybackTime),
             SourceApp = "Cider"
@@ -59,6 +60,19 @@ public class CiderV3Backend : BasePlayerBackend
         if (info.Artwork?.Url != null)
             state.ArtworkUrl = info.Artwork.Url;
 
+        var rawIsPlaying = await _api.TryGetIsPlayingAsync();
+
+        bool posMoved = (_lastState == null || state.Position != _lastPos);
+        if (posMoved)
+        {
+            _lastPos = state.Position;
+            _lastPosTime = DateTime.UtcNow;
+        }
+
+        bool stuck = !posMoved && (DateTime.UtcNow - _lastPosTime).TotalSeconds > 1.2;
+
+        state.Playing = rawIsPlaying && !stuck;
+
         bool changed = !StatesEqual(_lastState, state);
         _lastState = state;
 
@@ -69,9 +83,7 @@ public class CiderV3Backend : BasePlayerBackend
     private static bool StatesEqual(PlayerState? a, PlayerState b)
     {
         if (a is null) return false;
-
-        if (a.Artists.Count != b.Artists.Count)
-            return false;
+        if (a.Artists.Count != b.Artists.Count) return false;
 
         for (int i = 0; i < a.Artists.Count; i++)
             if (a.Artists[i] != b.Artists[i])

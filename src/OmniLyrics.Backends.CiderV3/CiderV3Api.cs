@@ -20,7 +20,8 @@ public class CiderV3Api
         BaseUrl = baseUrl;
         _http = new HttpClient
         {
-            BaseAddress = new Uri(baseUrl)
+            BaseAddress = new Uri(baseUrl),
+            Timeout = TimeSpan.FromMilliseconds(200)
         };
     }
 

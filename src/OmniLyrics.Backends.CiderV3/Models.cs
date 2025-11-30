@@ -42,9 +42,6 @@ public class CiderNowPlayingInfo
     [JsonPropertyName("durationInMillis")]
     public long DurationInMillis { get; set; }
 
-    [JsonPropertyName("isPlaying")]
-    public bool? IsPlaying { get; set; }
-
     // Artwork
     [JsonPropertyName("artwork")]
     public CiderArtwork? Artwork { get; set; }
@@ -78,7 +75,7 @@ public class CiderNowPlayingInfo
     [JsonPropertyName("playParams")]
     public CiderPlayParams? PlayParams { get; set; }
 
-    // Extra fields not defined above → avoid deserialization errors
+    // Extra fields not defined above
     [JsonExtensionData]
     public Dictionary<string, object>? Extra { get; set; }
 }

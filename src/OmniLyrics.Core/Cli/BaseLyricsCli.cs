@@ -250,6 +250,7 @@ public abstract class BaseLyricsCli
     /// </summary>
     protected virtual void RenderSingleLine(string text)
     {
+        Console.Clear();
         Console.WriteLine(text);
         Console.Out.Flush();
     }

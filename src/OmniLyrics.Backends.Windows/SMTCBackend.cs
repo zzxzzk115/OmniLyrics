@@ -23,16 +23,23 @@ public class SMTCBackend : BasePlayerBackend
         _mediaManager.OnAnyTimelinePropertyChanged += HandleTimelineChanged;
         _mediaManager.OnAnyPlaybackStateChanged += HandlePlaybackChanged;
 
-        await _mediaManager.StartAsync();
-
-        _ = Task.Run(async () =>
+        try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            await _mediaManager.StartAsync();
+
+            _ = Task.Run(async () =>
             {
-                PushState();
-                await Task.Delay(200, cancellationToken);
-            }
-        }, cancellationToken);
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    PushState();
+                    await Task.Delay(200, cancellationToken);
+                }
+            }, cancellationToken);
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     public override PlayerState? GetCurrentState() => _lastState;
