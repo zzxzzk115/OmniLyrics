@@ -174,9 +174,14 @@ Software-specific Backends:
 - [ ] [Cider v1](https://github.com/ciderapp/Cider) (Open Source Version)
 - [x] [YesPlayMusic](https://github.com/qier222/YesPlayMusic)
 
+Server & API
+- [x] UDP Client & Server (localhost:32651)
+- [x] Web API (http://localhost:27270)
+
 CLI:
 - [x] Multiple Line Mode (Default)
 - [x] Single Line Mode (for Waybar)
+- [x] Remote Control (through UDP commands)
 
 TUI:
 
