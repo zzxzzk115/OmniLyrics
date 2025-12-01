@@ -130,7 +130,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
         );
 
         // Load lyrics
-        var parsed = await LyricsService.SearchLyricsAsync(state);
+        var parsed = await LyricsService.SearchLyricLinesAsync(state, false);
 
         // Store result in cache
         LyricsCache[cacheKey] = parsed;

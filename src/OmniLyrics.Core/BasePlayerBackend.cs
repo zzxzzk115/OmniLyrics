@@ -6,7 +6,11 @@ public abstract class BasePlayerBackend : IPlayerBackend
 
     public virtual void EmitStateChanged(PlayerState state)
     {
-        OnStateChanged?.Invoke(this, state);
+        // Filter media type, only MediaType.Music is allowed
+        if (MediaTypeDetector.Guess(state) == MediaType.Music)
+        {
+            OnStateChanged?.Invoke(this, state);
+        }
     }
 
     public abstract PlayerState? GetCurrentState();

@@ -16,6 +16,10 @@ public class SMTCBackend : BasePlayerBackend
 
     private YesPlayMusicApi _yesPlayMusicApi = new();
 
+    private DateTime _lastSyncTime;
+    private TimeSpan _lastSyncPosition;
+    private bool _isPlaying;
+
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
         _mediaManager.OnFocusedSessionChanged += HandleFocusedSessionChanged;
@@ -31,7 +35,7 @@ public class SMTCBackend : BasePlayerBackend
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    PushState();
+                    PushPositionTick(); // internal timeline update
                     await Task.Delay(200, cancellationToken);
                 }
             }, cancellationToken);
@@ -63,6 +67,37 @@ public class SMTCBackend : BasePlayerBackend
     private void HandlePlaybackChanged(MediaManager.MediaSession session, GlobalSystemMediaTransportControlsSessionPlaybackInfo info)
     {
         PushState();
+    }
+
+    // --- Sync SMTC position with internal tracker ---
+    private void SyncPosition(TimeSpan pos, bool playing)
+    {
+        _lastSyncTime = DateTime.UtcNow;
+        _lastSyncPosition = pos;
+        _isPlaying = playing;
+    }
+
+    // --- Predictive timeline tick ---
+    private void PushPositionTick()
+    {
+        if (_lastState == null || !_isPlaying)
+            return;
+
+        var elapsed = DateTime.UtcNow - _lastSyncTime;
+        if (elapsed.TotalMilliseconds < 0)
+            return;
+
+        var predicted = _lastSyncPosition + elapsed;
+
+        if (_lastState.Duration != TimeSpan.Zero && predicted > _lastState.Duration)
+            predicted = _lastState.Duration;
+
+        // Only update if the drift is small (SMTC didn't report a jump)
+        if (Math.Abs((predicted - _lastState.Position).TotalMilliseconds) < 500)
+        {
+            _lastState.Position = predicted;
+            EmitStateChanged(_lastState);
+        }
     }
 
     private async void PushState()
@@ -187,6 +222,22 @@ public class SMTCBackend : BasePlayerBackend
 
                 state.ArtworkWidth = img.Width;
                 state.ArtworkHeight = img.Height;
+            }
+
+            // Seek detection: if SMTC jumps significantly
+            if (_lastState != null)
+            {
+                var diff = Math.Abs((state.Position - _lastState.Position).TotalMilliseconds);
+                if (diff > 500)
+                {
+                    // I resync position on seek
+                    SyncPosition(state.Position, state.Playing);
+                }
+            }
+            else
+            {
+                // First-time sync
+                SyncPosition(state.Position, state.Playing);
             }
 
             if (!StatesEqual(_lastState, state))

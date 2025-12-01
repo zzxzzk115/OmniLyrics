@@ -14,8 +14,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-	<DebugType>None</DebugType>
-	<DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
 </Project>
