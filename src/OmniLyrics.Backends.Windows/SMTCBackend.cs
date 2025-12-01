@@ -36,6 +36,13 @@ public class SMTCBackend : BasePlayerBackend
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     PushPositionTick(); // internal timeline update
+
+                    if (_lastState?.SourceApp != null &&
+                        _lastState.SourceApp.StartsWith("YesPlayMusic"))
+                    {
+                        await PollYesPlayMusicData();
+                    }
+
                     await Task.Delay(200, cancellationToken);
                 }
             }, cancellationToken);
@@ -100,6 +107,38 @@ public class SMTCBackend : BasePlayerBackend
         }
     }
 
+    // --- Poll-based data refresh for YesPlayMusic ---
+    private async Task PollYesPlayMusicData()
+    {
+        if (_currentSession == null)
+            return;
+
+        var control = _currentSession.ControlSession;
+
+        try
+        {
+            if (_lastState == null)
+                return;
+
+            // Try get player state from YesPlayMusic
+            var ypState = await _yesPlayMusicApi.GetStateAsync();
+            if (ypState != null)
+            {
+                // Override position, duration, artwork anyway
+                _lastState.Position = ypState.Position;
+                _lastState.Duration = ypState.Duration;
+                _lastState.ArtworkUrl = ypState.ArtworkUrl;
+
+                SyncPosition(ypState.Position, _lastState.Playing);
+                EmitStateChanged(_lastState);
+            }
+        }
+        catch
+        {
+            // ignore SMTC read errors
+        }
+    }
+
     private async void PushState()
     {
         try
@@ -149,13 +188,13 @@ public class SMTCBackend : BasePlayerBackend
             var media = await control.TryGetMediaPropertiesAsync();
 
             // Consider Apple Music, Artist = ArtistName1 & ArtistName2 — Album/Title( - Single)
-            var mediaArtists = new List<string>();
+            List<string>? mediaArtists = null;
             var mediaAlbum = media.AlbumTitle;
             if (media.Artist != null && media.Artist.Contains(" — "))
             {
                 var parts = media.Artist.Split(" — ");
                 var artists = parts[0];
-                mediaArtists = MyArtistHelper.GetArtistsFromString(artists) ?? mediaArtists;
+                mediaArtists = MyArtistHelper.GetArtistsFromString(artists);
                 if (string.IsNullOrEmpty(media.AlbumTitle))
                 {
                     mediaAlbum = parts[1].Trim();
@@ -177,38 +216,21 @@ public class SMTCBackend : BasePlayerBackend
                 mediaArtists = MyArtistHelper.GetArtistsFromString(media.Artist!);
             }
 
+            bool isYesPlayMusic = control.SourceAppUserModelId.StartsWith("YesPlayMusic");
+
             var state = new PlayerState
             {
                 Title = media.Title,
                 Artists = mediaArtists,
                 Album = mediaAlbum,
                 Playing = playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
-                Position = timeline.Position,
+                Position = isYesPlayMusic ? _lastSyncPosition : timeline.Position, // Fix position for YesPlayMusic
                 Duration = timeline.EndTime - timeline.StartTime,
                 SourceApp = control.SourceAppUserModelId,
                 ArtworkUrl = null,          // SMTC doesn't provide URL
                 ArtworkWidth = 0,           // will be filled below
                 ArtworkHeight = 0
             };
-
-            // Try get player state from YesPlayMusic
-            if (control.SourceAppUserModelId.StartsWith("YesPlayMusic"))
-            {
-                var ypState = await _yesPlayMusicApi.GetStateAsync();
-                if (ypState != null)
-                {
-                    // When YesPlayMusic skipped some songs...
-                    if (ypState.Title != media.Title)
-                    {
-                        state = ypState.DeepCopy();
-                    }
-
-                    // Override position, duration, artwork anyway
-                    state.Position = ypState.Position;
-                    state.Duration = ypState.Duration;
-                    state.ArtworkUrl = ypState.ArtworkUrl;
-                }
-            }
 
             var thumb = media.Thumbnail;
             if (thumb != null)
@@ -227,7 +249,7 @@ public class SMTCBackend : BasePlayerBackend
                 var diff = Math.Abs((state.Position - _lastState.Position).TotalMilliseconds);
                 if (diff > 500)
                 {
-                    // I resync position on seek
+                    // Resync position on seek
                     SyncPosition(state.Position, state.Playing);
                 }
             }

@@ -2,11 +2,8 @@
 
 public static class MyArtistHelper
 {
-    public static List<string>? GetArtistsFromString(string artistDesc)
+    public static List<string> GetArtistsFromString(string artistDesc)
     {
-        if (artistDesc == null)
-            return null;
-
         // Multiple artists (YesPlayMusic Style)
         if (artistDesc.Contains(","))
         {
