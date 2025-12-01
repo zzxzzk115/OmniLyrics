@@ -189,12 +189,13 @@ public class MacOSMediaControlBackend : BasePlayerBackend
 
     // --------------------------------------------------------------
     // Control commands
+    // https://github.com/ungive/media-control/blob/master/bin/media-control
     // --------------------------------------------------------------
     public override Task PlayAsync() => RunCmd("play");
     public override Task PauseAsync() => RunCmd("pause");
-    public override Task TogglePlayPauseAsync() => RunCmd("togglePlayPause");
-    public override Task NextAsync() => RunCmd("next");
-    public override Task PreviousAsync() => RunCmd("previous");
+    public override Task TogglePlayPauseAsync() => RunCmd("toggle-play-pause");
+    public override Task NextAsync() => RunCmd("next-track");
+    public override Task PreviousAsync() => RunCmd("previous-track");
     public override Task SeekAsync(TimeSpan p) => RunCmd($"seek {p.TotalSeconds}");
 
     private Task RunCmd(string arg)
