@@ -13,7 +13,7 @@ public class WebApiServer
     private readonly ILyricsProvider _lyrics;
     private readonly int _port;
 
-    public WebApiServer(IPlayerBackend backend, ILyricsProvider lyrics, int port = 27270)
+    public WebApiServer(IPlayerBackend backend, ILyricsProvider lyrics, int port = ClientServerCommonDefine.WebApiPort)
     {
         _backend = backend;
         _lyrics = lyrics;

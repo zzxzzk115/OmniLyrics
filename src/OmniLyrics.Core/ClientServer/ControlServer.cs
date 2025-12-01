@@ -1,6 +1,7 @@
-﻿using OmniLyrics.Core;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
+
+namespace OmniLyrics.Core;
 
 public class CommandServer
 {
@@ -13,7 +14,7 @@ public class CommandServer
 
     public async Task StartAsync(CancellationToken token)
     {
-        using var udp = new UdpClient(32651);
+        using var udp = new UdpClient(ClientServerCommonDefine.ControlPort);
 
         while (!token.IsCancellationRequested)
         {
