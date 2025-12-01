@@ -1,5 +1,4 @@
 ﻿using OmniLyrics.Core;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace OmniLyrics.Backends.CiderV3;
 

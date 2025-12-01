@@ -88,6 +88,10 @@ public class MacOSMediaControlBackend : BasePlayerBackend
                 ? jArtist.GetString() ?? ""
                 : _lastState?.Artists.FirstOrDefault() ?? "";
 
+            string album = payload.TryGetProperty("album", out var jAlbum)
+                ? jAlbum.GetString() ?? ""
+                : _lastState?.Album ?? "";
+
             long durationMicros = payload.TryGetProperty("durationMicros", out var jDur)
                 ? jDur.GetInt64()
                 : (_lastState?.Duration.Ticks * 10) ?? 0;
@@ -122,6 +126,7 @@ public class MacOSMediaControlBackend : BasePlayerBackend
             var newState = new PlayerState
             {
                 Title = title,
+                Album = album,
                 SourceApp = bundle,
                 Duration = TimeSpan.FromMicroseconds(durationMicros),
                 Position = TimeSpan.FromMicroseconds(positionMicros),
@@ -165,17 +170,8 @@ public class MacOSMediaControlBackend : BasePlayerBackend
                 newPos = (long)state.Duration.TotalMicroseconds;
             }
 
-            var updated = new PlayerState
-            {
-                Title = state.Title,
-                Duration = state.Duration,
-                Playing = state.Playing,
-                SourceApp = state.SourceApp,
-                Position = TimeSpan.FromMicroseconds(newPos),
-                Album = state.Album,
-                ArtworkUrl = state.ArtworkUrl
-            };
-            updated.Artists.AddRange(state.Artists);
+            var updated = state.DeepCopy();
+            updated.Position = TimeSpan.FromMicroseconds(newPos);
 
             _lastState = updated;
             EmitStateChanged(updated);
