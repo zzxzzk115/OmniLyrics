@@ -154,11 +154,8 @@ public class SMTCBackend : BasePlayerBackend
             if (media.Artist != null && media.Artist.Contains(" — "))
             {
                 var parts = media.Artist.Split(" — ");
-                var artists = parts[0].Trim().Split("&");
-                foreach (var artist in artists)
-                {
-                    mediaArtists.Add(artist.Trim());
-                }
+                var artists = parts[0];
+                mediaArtists = MyArtistHelper.GetArtistsFromString(artists) ?? mediaArtists;
                 if (string.IsNullOrEmpty(media.AlbumTitle))
                 {
                     mediaAlbum = parts[1].Trim();
@@ -177,7 +174,7 @@ public class SMTCBackend : BasePlayerBackend
             }
             else
             {
-                mediaArtists.Add(media.Artist!);
+                mediaArtists = MyArtistHelper.GetArtistsFromString(media.Artist!);
             }
 
             var state = new PlayerState

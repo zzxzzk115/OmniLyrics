@@ -129,7 +129,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
             null
         );
 
-        // Load lyrics
+        // Load lyrics, CLI doesn't need karaoke mode.
         var parsed = await LyricsService.SearchLyricLinesAsync(state, false);
 
         // Store result in cache

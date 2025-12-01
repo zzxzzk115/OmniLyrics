@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using Lyricify.Lyrics.Helpers;
 using Lyricify.Lyrics.Models;
-using Lyricify.Lyrics.Providers.Web.QQMusic;
 using Lyricify.Lyrics.Searchers;
 using Lyricify.Lyrics.Searchers.Helpers;
 using OmniLyrics.Core.Lyrics.Models;
@@ -11,11 +10,12 @@ namespace OmniLyrics.Core.Lyrics;
 
 public class LyricsService
 {
-    private readonly Api _api = new();
+    private readonly Lyricify.Lyrics.Providers.Web.QQMusic.Api _qqMusicApi = new();
+    private readonly Lyricify.Lyrics.Providers.Web.Netease.Api _neteaseApi = new();
 
     private readonly YesPlayMusicApi _yesPlayMusicsLyricsApi = new();
 
-    public async Task<List<LyricsLine>?> SearchLyricLinesAsync(PlayerState state, bool karaoke)
+    public async Task<List<LyricsLine>?> SearchLyricLinesAsync(PlayerState state, bool karaoke = true)
     {
         try
         {
@@ -33,17 +33,28 @@ public class LyricsService
                         return ParseLyrics(embededLyrics, LyricsRawTypes.Lrc);
                     }
                 }
-                // TODO: Use Netease API
-                else { }
+                // Use Netease API to get karaoke lyrics
+                else 
+                {
+                    var neteaseSong = await SearchNeteaseSongAsync(state);
+                    if (neteaseSong == null)
+                        return null;
+
+                    var lyrics = await _neteaseApi.GetLyricNew(neteaseSong.Id);
+                    if (lyrics == null)
+                        return null;
+
+                    return ParseLyrics(lyrics.Yrc.Lyric, LyricsRawTypes.Yrc);
+                }
             }
 
-            var song = await SearchSongAsync(state);
-            if (song == null)
+            var qqSong = await SearchQQSongAsync(state);
+            if (qqSong == null)
                 return null;
 
             if (karaoke)
             {
-                var lyrics = await _api.GetLyricsAsync(song.Id);
+                var lyrics = await _qqMusicApi.GetLyricsAsync(qqSong.Id);
                 if (lyrics == null)
                     return null;
 
@@ -51,7 +62,7 @@ public class LyricsService
             }
             else
             {
-                var lyrics = await _api.GetLyric(song.Mid);
+                var lyrics = await _qqMusicApi.GetLyric(qqSong.Mid);
                 if (lyrics == null)
                     return null;
 
@@ -64,7 +75,7 @@ public class LyricsService
         }
     }
 
-    private async Task<QQMusicSearchResult?> SearchSongAsync(PlayerState state)
+    private async Task<QQMusicSearchResult?> SearchQQSongAsync(PlayerState state)
     {
         try
         {
@@ -81,6 +92,25 @@ public class LyricsService
             }, Searchers.QQMusic, CompareHelper.MatchType.Medium) as QQMusicSearchResult;
 
             return generalSearch;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private async Task<Lyricify.Lyrics.Providers.Web.Netease.Song?> SearchNeteaseSongAsync(PlayerState state)
+    {
+        try
+        {
+            // Translate artist names to Chinese for better Netease Music search results
+            ArtistHelper.ChineselizeArtists(state.Artists);
+
+            var neteaseSearch = await _neteaseApi.SearchNew(state.Title + " " + state.Artists.First());
+            if (neteaseSearch == null)
+                return null;
+
+            return neteaseSearch.Result.Songs.First();
         }
         catch (Exception)
         {
