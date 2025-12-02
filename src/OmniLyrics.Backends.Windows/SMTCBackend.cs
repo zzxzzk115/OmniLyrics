@@ -110,7 +110,7 @@ public class SMTCBackend : BasePlayerBackend
     // --- Poll-based data refresh for YesPlayMusic ---
     private async Task PollYesPlayMusicData()
     {
-        if (_currentSession == null)
+        if (_currentSession == null || _currentSession.ControlSession == null)
             return;
 
         var control = _currentSession.ControlSession;
@@ -248,10 +248,11 @@ public class SMTCBackend : BasePlayerBackend
                         state = ypState.DeepCopy();
                     }
 
-                    // Override position, duration, artwork anyway
+                    // Override position, duration, artwork, album anyway
                     state.Position = ypState.Position;
                     state.Duration = ypState.Duration;
                     state.ArtworkUrl = ypState.ArtworkUrl;
+                    state.Album = ypState.Album;
                 }
             }
 
