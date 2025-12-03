@@ -4,7 +4,7 @@ using OmniLyrics.Core;
 
 namespace OmniLyrics.Backends.Mac;
 
-public class MacOSMediaControlBackend : BasePlayerBackend
+public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
 {
     private PlayerState? _lastState;
     private Process? _proc;
@@ -207,5 +207,12 @@ public class MacOSMediaControlBackend : BasePlayerBackend
         });
 
         return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _proc?.Dispose();
+        _streamLoop?.Dispose();
+        _posTimer?.Dispose();
     }
 }

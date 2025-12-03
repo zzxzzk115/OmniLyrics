@@ -7,7 +7,7 @@ namespace OmniLyrics.Backends.CiderV3;
 /// Cider v3 RPC API client.
 /// https://cider.sh/docs/client/rpc
 /// </summary>
-public class CiderV3Api
+public class CiderV3Api : IDisposable
 {
     private readonly HttpClient _http;
 
@@ -137,5 +137,10 @@ public class CiderV3Api
     private string GetPlaybackApiEndpoint(string path)
     {
         return _playbackApiPrefix + path;
+    }
+
+    public void Dispose()
+    {
+        _http.Dispose();
     }
 }

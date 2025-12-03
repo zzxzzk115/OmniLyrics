@@ -8,7 +8,7 @@ namespace OmniLyrics.Backends.Windows;
 /// <summary>
 /// SMTC (System Media Transport Controls) backend for media playback and control. Only works on Windows.
 /// </summary>
-public class SMTCBackend : BasePlayerBackend
+public class SMTCBackend : BasePlayerBackend, IDisposable
 {
     private readonly MediaManager _mediaManager = new();
     private MediaManager.MediaSession? _currentSession;
@@ -367,5 +367,10 @@ public class SMTCBackend : BasePlayerBackend
         {
             await s.TryChangePlaybackPositionAsync(position.Ticks);
         }
+    }
+
+    public void Dispose()
+    {
+        _mediaManager.Dispose();
     }
 }

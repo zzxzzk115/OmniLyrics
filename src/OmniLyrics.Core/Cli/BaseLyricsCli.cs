@@ -53,7 +53,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
         while (!token.IsCancellationRequested)
         {
             RenderLyricsFrame();
-            await Task.Delay(10, token);
+            await Task.Delay(10);
         }
     }
 

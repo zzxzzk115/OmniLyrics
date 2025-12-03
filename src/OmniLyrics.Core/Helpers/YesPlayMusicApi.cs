@@ -8,7 +8,7 @@ namespace OmniLyrics.Core.Helpers
     /// Requests /player only once per refresh and returns full PlayerState.
     /// https://github.com/zzxzzk115/i3status-rust-ypm-lyrics
     /// </summary>
-    public class YesPlayMusicApi
+    public class YesPlayMusicApi : IDisposable
     {
         private readonly HttpClient _player = new()
         {
@@ -152,6 +152,12 @@ namespace OmniLyrics.Core.Helpers
             {
                 return null;
             }
+        }
+
+        public void Dispose()
+        {
+            _player.Dispose();
+            _lyric.Dispose();
         }
     }
 }

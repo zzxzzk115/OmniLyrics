@@ -18,7 +18,7 @@ internal static class MPRISStrings
 /// <summary>
 /// MPIRS (D-Bus) Backend, only works on Linux
 /// </summary>
-public class MPRISBackend : BasePlayerBackend
+public class MPRISBackend : BasePlayerBackend, IDisposable
 {
     private PlayerState? _lastState;
 
@@ -340,4 +340,10 @@ public class MPRISBackend : BasePlayerBackend
 
     public override Task SeekAsync(TimeSpan position)
         => _player?.SetPositionAsync("/", (long)position.TotalMicroseconds) ?? Task.CompletedTask;
+
+    public void Dispose()
+    {
+        _propertyWatcher?.Dispose();
+        _pollTimer?.Dispose();
+    }
 }
