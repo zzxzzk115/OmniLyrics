@@ -9,26 +9,17 @@ public class NameOwnerChangedEvent
 
 public class PlayerMetadata
 {
-    public string? TrackId { get; }
-    public string? Title { get; }
-    public IReadOnlyList<string>? Artists { get; }
-    public string? Album { get; }
-    public IReadOnlyList<string>? Genres { get; }
-    public TimeSpan? Length { get; }
-    public Uri? ArtUrl { get; }
-    public string? Url { get; }
-
     private PlayerMetadata() { }
 
     private PlayerMetadata(
-            string? trackId,
-            string? title,
-            IReadOnlyList<string>? artists,
-            string? album,
-            IReadOnlyList<string>? genres,
-            TimeSpan? length,
-            Uri? artUrl,
-            string? url)
+        string? trackId,
+        string? title,
+        IReadOnlyList<string>? artists,
+        string? album,
+        IReadOnlyList<string>? genres,
+        TimeSpan? length,
+        Uri? artUrl,
+        string? url)
     {
         TrackId = trackId;
         Title = title;
@@ -39,6 +30,15 @@ public class PlayerMetadata
         ArtUrl = artUrl;
         Url = url;
     }
+
+    public string? TrackId { get; }
+    public string? Title { get; }
+    public IReadOnlyList<string>? Artists { get; }
+    public string? Album { get; }
+    public IReadOnlyList<string>? Genres { get; }
+    public TimeSpan? Length { get; }
+    public Uri? ArtUrl { get; }
+    public string? Url { get; }
 
     public static PlayerMetadata FromDictionary(IDictionary<string, object> dict)
     {

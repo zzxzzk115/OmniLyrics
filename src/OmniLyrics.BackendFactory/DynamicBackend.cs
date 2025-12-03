@@ -1,16 +1,16 @@
-﻿using OmniLyrics.Core;
-using OmniLyrics.Backends.CiderV3;
+﻿using OmniLyrics.Backends.CiderV3;
 using OmniLyrics.Backends.Linux;
 using OmniLyrics.Backends.Mac;
+using OmniLyrics.Core;
 
 namespace OmniLyrics.Backends.Dynamic;
 
 public class DynamicBackend : BasePlayerBackend, IDisposable
 {
     private readonly Dictionary<string, IPlayerBackend> _backends;
-    private IPlayerBackend? _current;
 
     private CancellationTokenSource _cts = new();
+    private IPlayerBackend? _current;
 
     public DynamicBackend()
     {
@@ -28,6 +28,11 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
             kv.Value.OnStateChanged += HandleSubBackendStateChanged;
 
         _current = _backends.Values.First();
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
     }
 
     public override PlayerState? GetCurrentState() => _current?.GetCurrentState();
@@ -64,9 +69,4 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
     public override Task NextAsync() => _current?.NextAsync() ?? Task.CompletedTask;
     public override Task PreviousAsync() => _current?.PreviousAsync() ?? Task.CompletedTask;
     public override Task SeekAsync(TimeSpan pos) => _current?.SeekAsync(pos) ?? Task.CompletedTask;
-
-    public void Dispose()
-    {
-        _cts.Cancel();
-    }
 }

@@ -2,6 +2,7 @@
 using OmniLyrics.Core;
 using OmniLyrics.Core.Helpers;
 using Tmds.DBus;
+using Timer = System.Timers.Timer;
 
 namespace OmniLyrics.Backends.Linux;
 
@@ -16,21 +17,26 @@ internal static class MPRISStrings
 }
 
 /// <summary>
-/// MPIRS (D-Bus) Backend, only works on Linux
+///     MPIRS (D-Bus) Backend, only works on Linux
 /// </summary>
 public class MPRISBackend : BasePlayerBackend, IDisposable
 {
+    private readonly YesPlayMusicApi _yesPlayMusicApi = new();
+    private string? _busName;
     private PlayerState? _lastState;
 
     private Player? _player;
-    private string? _busName;
-    private IDisposable? _propertyWatcher;
-
-    private YesPlayMusicApi _yesPlayMusicApi = new();
 
     // Timer for periodic polling of the current playback position.
     // This avoids inconsistencies when the user seeks manually.
-    private System.Timers.Timer? _pollTimer;
+    private Timer? _pollTimer;
+    private IDisposable? _propertyWatcher;
+
+    public void Dispose()
+    {
+        _propertyWatcher?.Dispose();
+        _pollTimer?.Dispose();
+    }
 
     public override PlayerState? GetCurrentState() => _lastState;
 
@@ -43,9 +49,9 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
 
         await dbus.WatchNameOwnerChangedAsync(args =>
         {
-            var name = args.name;
-            var oldOwner = args.oldOwner;
-            var newOwner = args.newOwner;
+            string name = args.name;
+            string oldOwner = args.oldOwner;
+            string newOwner = args.newOwner;
 
             if (!name.StartsWith(MPRISStrings.MprisPrefix))
                 return;
@@ -94,7 +100,7 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
     private async Task ChooseBestPlayerAsync(CancellationToken token)
     {
         var bus = Connection.Session;
-        var services = await bus.ListServicesAsync();
+        string[]? services = await bus.ListServicesAsync();
 
         var players = services
             .Where(s => s.StartsWith(MPRISStrings.MprisPrefix)
@@ -110,7 +116,7 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
         string? selected = null;
 
         // 1. Prefer YesPlayMusic
-        var ypm = players.FirstOrDefault(p => p.Contains(MPRISStrings.YesPlayMusic, StringComparison.OrdinalIgnoreCase));
+        string? ypm = players.FirstOrDefault(p => p.Contains(MPRISStrings.YesPlayMusic, StringComparison.OrdinalIgnoreCase));
         if (ypm != null)
         {
             selected = ypm;
@@ -118,13 +124,13 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
         else
         {
             // 2. Prefer the one that is playing
-            foreach (var p in players)
+            foreach (string p in players)
             {
                 try
                 {
                     var playerProxy = bus.CreateProxy<IPlayer>(p, MPRISStrings.MediaPlayerPath);
                     var player = new Player(p, playerProxy);
-                    var status = await player.GetPlaybackStatusAsync();
+                    string status = await player.GetPlaybackStatusAsync();
                     if (status == "Playing")
                     {
                         selected = p;
@@ -217,8 +223,8 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
             if (meta == null)
                 return;
 
-            var pos = await _player.GetPositionAsync();
-            var status = await _player.GetPlaybackStatusAsync();
+            long pos = await _player.GetPositionAsync();
+            string status = await _player.GetPlaybackStatusAsync();
 
             var newState = new PlayerState
             {
@@ -275,7 +281,7 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
     // ---------------------------------------------------------
     private void StartPollingTimer()
     {
-        _pollTimer = new System.Timers.Timer(200); // 200ms interval
+        _pollTimer = new Timer(200); // 200ms interval
         _pollTimer.AutoReset = true;
 
         _pollTimer.Elapsed += async (_, _) =>
@@ -286,11 +292,11 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
 
             try
             {
-                var newPos = await _player.GetPositionAsync();
+                long newPos = await _player.GetPositionAsync();
                 var posTs = TimeSpan.FromMicroseconds(newPos);
 
                 // Try override position with YesPlayMusic first
-                var app = state.SourceApp ?? "";
+                string app = state.SourceApp ?? "";
                 if (app.Contains(MPRISStrings.YesPlayMusic, StringComparison.OrdinalIgnoreCase))
                 {
                     var ypState = await _yesPlayMusicApi.GetStateAsync();
@@ -340,10 +346,4 @@ public class MPRISBackend : BasePlayerBackend, IDisposable
 
     public override Task SeekAsync(TimeSpan position)
         => _player?.SetPositionAsync("/", (long)position.TotalMicroseconds) ?? Task.CompletedTask;
-
-    public void Dispose()
-    {
-        _propertyWatcher?.Dispose();
-        _pollTimer?.Dispose();
-    }
 }

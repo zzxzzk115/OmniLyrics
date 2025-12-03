@@ -6,7 +6,7 @@ public record LyricsToken(
     string Text
 );
 
-public record LyricsLine (
+public record LyricsLine(
     TimeSpan Timestamp,
     string Text,
     List<LyricsToken>? Tokens

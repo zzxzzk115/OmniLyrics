@@ -2,7 +2,6 @@
 
 public class Player
 {
-    public string Name { get; }
     private readonly IPlayer _proxy;
 
     internal Player(string name, IPlayer proxy)
@@ -11,9 +10,11 @@ public class Player
         _proxy = proxy;
     }
 
+    public string Name { get; }
+
     public async Task<PlayerMetadata> GetMetadataAsync()
     {
-        IDictionary<string, object> metadataDict = await _proxy.GetAsync<IDictionary<string, object>>("Metadata");
+        var metadataDict = await _proxy.GetAsync<IDictionary<string, object>>("Metadata");
         return PlayerMetadata.FromDictionary(metadataDict);
     }
 

@@ -8,7 +8,7 @@
 
             for (int i = 0; i < args.Length; i++)
             {
-                var arg = args[i];
+                string arg = args[i];
 
                 // mode
                 if (arg == "--mode" || arg == "-m")
@@ -41,7 +41,6 @@
                 {
                     if (double.TryParse(arg, out double sec))
                         opts.SeekPositionSeconds = sec;
-                    continue;
                 }
             }
 

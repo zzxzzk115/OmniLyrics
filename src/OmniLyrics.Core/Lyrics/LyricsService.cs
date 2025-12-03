@@ -1,17 +1,18 @@
 ﻿using System.Net;
 using Lyricify.Lyrics.Helpers;
 using Lyricify.Lyrics.Models;
+using Lyricify.Lyrics.Providers.Web.Netease;
 using Lyricify.Lyrics.Searchers;
 using Lyricify.Lyrics.Searchers.Helpers;
-using OmniLyrics.Core.Lyrics.Models;
 using OmniLyrics.Core.Helpers;
+using OmniLyrics.Core.Lyrics.Models;
 
 namespace OmniLyrics.Core.Lyrics;
 
 public class LyricsService
 {
+    private readonly Api _neteaseApi = new();
     private readonly Lyricify.Lyrics.Providers.Web.QQMusic.Api _qqMusicApi = new();
-    private readonly Lyricify.Lyrics.Providers.Web.Netease.Api _neteaseApi = new();
 
     private readonly YesPlayMusicApi _yesPlayMusicsLyricsApi = new();
 
@@ -20,13 +21,13 @@ public class LyricsService
         try
         {
             // Try get lyrics from YesPlayMusic first
-            var app = state.SourceApp ?? "";
+            string app = state.SourceApp ?? "";
             if (app.Contains("yesplaymusic", StringComparison.OrdinalIgnoreCase))
             {
                 // Use embeded lyrics (LRC)
                 if (!karaoke)
                 {
-                    var embededLyrics = await _yesPlayMusicsLyricsApi.TryGetLyricsAsync();
+                    string? embededLyrics = await _yesPlayMusicsLyricsApi.TryGetLyricsAsync();
                     if (embededLyrics != null)
                     {
                         // YesPlayMusic only provides LRC format
@@ -34,7 +35,7 @@ public class LyricsService
                     }
                 }
                 // Use Netease API to get karaoke lyrics
-                else 
+                else
                 {
                     var neteaseSong = await SearchNeteaseSongAsync(state);
                     if (neteaseSong == null)
@@ -82,13 +83,13 @@ public class LyricsService
             // Translate artist names to Chinese for better QQ Music search results
             ArtistHelper.ChineselizeArtists(state.Artists);
 
-            var generalSearch = await SearchHelper.Search(new TrackMultiArtistMetadata()
+            var generalSearch = await SearchHelper.Search(new TrackMultiArtistMetadata
             {
                 Album = state.Album,
                 AlbumArtists = state.Artists,
                 Artists = state.Artists,
                 DurationMs = (int)state.Duration.TotalMilliseconds,
-                Title = state.Title,
+                Title = state.Title
             }, Searchers.QQMusic, CompareHelper.MatchType.Medium) as QQMusicSearchResult;
 
             return generalSearch;
@@ -99,7 +100,7 @@ public class LyricsService
         }
     }
 
-    private async Task<Lyricify.Lyrics.Providers.Web.Netease.Song?> SearchNeteaseSongAsync(PlayerState state)
+    private async Task<Song?> SearchNeteaseSongAsync(PlayerState state)
     {
         try
         {

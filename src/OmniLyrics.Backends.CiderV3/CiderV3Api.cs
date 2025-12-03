@@ -4,16 +4,14 @@ using System.Text.Json;
 namespace OmniLyrics.Backends.CiderV3;
 
 /// <summary>
-/// Cider v3 RPC API client.
-/// https://cider.sh/docs/client/rpc
+///     Cider v3 RPC API client.
+///     https://cider.sh/docs/client/rpc
 /// </summary>
 public class CiderV3Api : IDisposable
 {
     private readonly HttpClient _http;
 
     private readonly string _playbackApiPrefix = "/api/v1/playback";
-
-    public string BaseUrl { get; }
 
     public CiderV3Api(string baseUrl = "http://localhost:10767")
     {
@@ -25,7 +23,14 @@ public class CiderV3Api : IDisposable
         };
     }
 
-    public static CiderV3Api CreateDefault() => new CiderV3Api();
+    public string BaseUrl { get; }
+
+    public void Dispose()
+    {
+        _http.Dispose();
+    }
+
+    public static CiderV3Api CreateDefault() => new();
 
     public static async Task<bool> IsAvailableAsync(CancellationToken token = default)
     {
@@ -64,7 +69,7 @@ public class CiderV3Api : IDisposable
             if (!resp.IsSuccessStatusCode)
                 return false;
 
-            var json = await resp.Content.ReadAsStringAsync(token);
+            string json = await resp.Content.ReadAsStringAsync(token);
             var data = JsonSerializer.Deserialize<CiderIsPlayingResponse>(json);
 
             return data?.IsPlaying ?? false;
@@ -84,7 +89,7 @@ public class CiderV3Api : IDisposable
             if (!resp.IsSuccessStatusCode)
                 return null;
 
-            var json = await resp.Content.ReadAsStringAsync(token);
+            string json = await resp.Content.ReadAsStringAsync(token);
             var data = JsonSerializer.Deserialize<CiderNowPlayingResponse>(json);
 
             return data?.Info;
@@ -120,7 +125,7 @@ public class CiderV3Api : IDisposable
     }
 
     private Task PostSimple(string path)
-        => PostAsync(path, null);
+        => PostAsync(path);
 
     public Task PlayAsync() => PostSimple("/play");
     public Task PauseAsync() => PostSimple("/pause");
@@ -134,13 +139,5 @@ public class CiderV3Api : IDisposable
         return PostAsync("/seek", new { position = sec });
     }
 
-    private string GetPlaybackApiEndpoint(string path)
-    {
-        return _playbackApiPrefix + path;
-    }
-
-    public void Dispose()
-    {
-        _http.Dispose();
-    }
+    private string GetPlaybackApiEndpoint(string path) => _playbackApiPrefix + path;
 }

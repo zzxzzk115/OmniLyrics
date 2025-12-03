@@ -5,11 +5,11 @@ namespace OmniLyrics.Backends.CiderV3;
 public class CiderV3Backend : BasePlayerBackend
 {
     private readonly CiderV3Api _api = CiderV3Api.CreateDefault();
-    private PlayerState? _lastState;
     private CancellationTokenSource? _cts;
 
     private TimeSpan _lastPos = TimeSpan.Zero;
     private DateTime _lastPosTime = DateTime.MinValue;
+    private PlayerState? _lastState;
 
     public override PlayerState? GetCurrentState() => _lastState;
 
@@ -68,9 +68,9 @@ public class CiderV3Backend : BasePlayerBackend
                     .Replace("{h}", info.Artwork.Height.ToString());
         }
 
-        var rawIsPlaying = await _api.TryGetIsPlayingAsync();
+        bool rawIsPlaying = await _api.TryGetIsPlayingAsync();
 
-        bool posMoved = (_lastState == null || state.Position != _lastPos);
+        bool posMoved = _lastState == null || state.Position != _lastPos;
         if (posMoved)
         {
             _lastPos = state.Position;

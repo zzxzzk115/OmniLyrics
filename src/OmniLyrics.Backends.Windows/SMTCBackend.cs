@@ -1,24 +1,30 @@
-﻿using OmniLyrics.Core;
+﻿using Windows.Media.Control;
+using OmniLyrics.Core;
 using OmniLyrics.Core.Helpers;
-using Windows.Media.Control;
+using SixLabors.ImageSharp;
 using WindowsMediaController;
 
 namespace OmniLyrics.Backends.Windows;
 
 /// <summary>
-/// SMTC (System Media Transport Controls) backend for media playback and control. Only works on Windows.
+///     SMTC (System Media Transport Controls) backend for media playback and control. Only works on Windows.
 /// </summary>
 public class SMTCBackend : BasePlayerBackend, IDisposable
 {
     private readonly MediaManager _mediaManager = new();
-    private MediaManager.MediaSession? _currentSession;
-    private PlayerState? _lastState;
 
-    private YesPlayMusicApi _yesPlayMusicApi = new();
+    private readonly YesPlayMusicApi _yesPlayMusicApi = new();
+    private MediaManager.MediaSession? _currentSession;
+    private bool _isPlaying;
+    private PlayerState? _lastState;
+    private TimeSpan _lastSyncPosition;
 
     private DateTime _lastSyncTime;
-    private TimeSpan _lastSyncPosition;
-    private bool _isPlaying;
+
+    public void Dispose()
+    {
+        _mediaManager.Dispose();
+    }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -125,7 +131,7 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
             if (ypState != null)
             {
                 // Only sync position if position dramatically changed
-                var diff = Math.Abs((ypState.Position - _lastState.Position).TotalMilliseconds);
+                double diff = Math.Abs((ypState.Position - _lastState.Position).TotalMilliseconds);
                 if (diff > 1500)
                 {
                     _lastState.Position = ypState.Position;
@@ -193,16 +199,16 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
 
             // Consider Apple Music, Artist = ArtistName1 & ArtistName2 — Album/Title( - Single)
             List<string>? mediaArtists = null;
-            var mediaAlbum = media.AlbumTitle;
+            string? mediaAlbum = media.AlbumTitle;
             if (media.Artist != null && media.Artist.Contains(" — "))
             {
-                var parts = media.Artist.Split(" — ");
-                var artists = parts[0];
+                string[] parts = media.Artist.Split(" — ");
+                string artists = parts[0];
                 mediaArtists = MyArtistHelper.GetArtistsFromString(artists);
                 if (string.IsNullOrEmpty(media.AlbumTitle))
                 {
                     mediaAlbum = parts[1].Trim();
-                    var more = mediaAlbum.Split(" - ");
+                    string[] more = mediaAlbum.Split(" - ");
                     if (more.Length == 1) // Ignore Single EP.
                     {
                         mediaAlbum = more[0].Trim();
@@ -231,8 +237,8 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
                 Position = isYesPlayMusic ? _lastSyncPosition : timeline.Position, // Fix position for YesPlayMusic
                 Duration = timeline.EndTime - timeline.StartTime,
                 SourceApp = control.SourceAppUserModelId,
-                ArtworkUrl = null,          // SMTC doesn't provide URL
-                ArtworkWidth = 0,           // will be filled below
+                ArtworkUrl = null, // SMTC doesn't provide URL
+                ArtworkWidth = 0,  // will be filled below
                 ArtworkHeight = 0
             };
 
@@ -261,7 +267,7 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
             {
                 using var ras = await thumb.OpenReadAsync();
                 using var stream = ras.AsStreamForRead();
-                using var img = SixLabors.ImageSharp.Image.Load(stream);
+                using var img = Image.Load(stream);
 
                 state.ArtworkWidth = img.Width;
                 state.ArtworkHeight = img.Height;
@@ -270,7 +276,7 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
             // Seek detection: if SMTC jumps significantly
             if (_lastState != null)
             {
-                var diff = Math.Abs((state.Position - _lastState.Position).TotalMilliseconds);
+                double diff = Math.Abs((state.Position - _lastState.Position).TotalMilliseconds);
                 if (diff > 500)
                 {
                     // Resync position on seek
@@ -367,10 +373,5 @@ public class SMTCBackend : BasePlayerBackend, IDisposable
         {
             await s.TryChangePlaybackPositionAsync(position.Ticks);
         }
-    }
-
-    public void Dispose()
-    {
-        _mediaManager.Dispose();
     }
 }

@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
-		<SelfContained>true</SelfContained>
-		<EnableWindowsTargeting>true</EnableWindowsTargeting>
-	</PropertyGroup>
+        <SelfContained>true</SelfContained>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)' != 'Debug'">
-		<PublishSingleFile>true</PublishSingleFile>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+        <PublishSingleFile>true</PublishSingleFile>
+    </PropertyGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\OmniLyrics.BackendFactory.Windows\OmniLyrics.BackendFactory.Windows.csproj" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\OmniLyrics.BackendFactory.Windows\OmniLyrics.BackendFactory.Windows.csproj"/>
+    </ItemGroup>
 
 </Project>

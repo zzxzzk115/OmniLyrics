@@ -4,9 +4,9 @@ using OmniLyrics.Core.Lyrics.Models;
 namespace OmniLyrics.Core.Cli;
 
 /// <summary>
-/// Base class for building a CLI lyrics display, independent of backend type.
-/// This version is fully cross-platform and uses only Console.Clear() + WriteLine(),
-/// avoiding cursor operations that fail under Linux/WSL.
+///     Base class for building a CLI lyrics display, independent of backend type.
+///     This version is fully cross-platform and uses only Console.Clear() + WriteLine(),
+///     avoiding cursor operations that fail under Linux/WSL.
 /// </summary>
 public abstract class BaseLyricsCli : ILyricsProvider
 {
@@ -17,17 +17,15 @@ public abstract class BaseLyricsCli : ILyricsProvider
     protected static readonly SemaphoreSlim SongChangeLock = new(1, 1);
 
     protected readonly IPlayerBackend Backend;
-    protected readonly LyricsService LyricsService;
-
-    // Lyrics + playback tracking
-    protected List<LyricsLine>? CurrentLyrics = null;
-    protected string LastSongId = "";
-    protected int LastCenterIndex = -999;
 
     // Added: per-app lyric cache
     protected readonly Dictionary<string, List<LyricsLine>?> LyricsCache = new();
+    protected readonly LyricsService LyricsService;
 
-    List<LyricsLine>? ILyricsProvider.CurrentLyrics => CurrentLyrics;
+    // Lyrics + playback tracking
+    protected List<LyricsLine>? CurrentLyrics;
+    protected int LastCenterIndex = -999;
+    protected string LastSongId = "";
 
     protected BaseLyricsCli(IPlayerBackend backend)
     {
@@ -41,8 +39,10 @@ public abstract class BaseLyricsCli : ILyricsProvider
         };
     }
 
+    List<LyricsLine>? ILyricsProvider.CurrentLyrics => CurrentLyrics;
+
     /// <summary>
-    /// Start backend + main render loop.
+    ///     Start backend + main render loop.
     /// </summary>
     public async Task RunAsync(CancellationToken token)
     {
@@ -58,8 +58,8 @@ public abstract class BaseLyricsCli : ILyricsProvider
     }
 
     /// <summary>
-    /// Fired when backend reports playback state changed.
-    /// Handles detecting new song + loading lyrics.
+    ///     Fired when backend reports playback state changed.
+    ///     Handles detecting new song + loading lyrics.
     /// </summary>
     private async Task HandleBackendStateChangedAsync(PlayerState? state)
     {
@@ -160,8 +160,8 @@ public abstract class BaseLyricsCli : ILyricsProvider
     }
 
     /// <summary>
-    /// Redraw lyrics window (called frequently).
-    /// Virtual so subclasses can implement custom rendering styles.
+    ///     Redraw lyrics window (called frequently).
+    ///     Virtual so subclasses can implement custom rendering styles.
     /// </summary>
     protected virtual void RenderLyricsFrame()
     {
@@ -187,7 +187,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
         if (CurrentLyrics is null)
             return;
 
-        TimeSpan pos = state.Position;
+        var pos = state.Position;
 
         // Find current lyric line
         int centerIdx = CurrentLyrics.FindLastIndex(l => l.Timestamp <= pos);
@@ -206,12 +206,12 @@ public abstract class BaseLyricsCli : ILyricsProvider
         var lines = new List<string>();
         for (int i = start; i <= end; i++)
         {
-            var text = CurrentLyrics[i].Text;
+            string text = CurrentLyrics[i].Text;
             lines.Add(i == centerIdx ? $">> {text}" : $"   {text}");
         }
 
         // Redraw full screen with updated lyrics
-        var artistsText = state.Artists.Count > 0
+        string artistsText = state.Artists.Count > 0
             ? string.Join(", ", state.Artists)
             : "Unknown Artist";
 
@@ -224,9 +224,9 @@ public abstract class BaseLyricsCli : ILyricsProvider
     }
 
     /// <summary>
-    /// Fully clears screen & prints header + lyrics block.
-    /// Safe for all terminals (Windows/Linux/WSL), no cursor movement.
-    /// Virtual so subclasses may replace full redraw with single-line output.
+    ///     Fully clears screen & prints header + lyrics block.
+    ///     Safe for all terminals (Windows/Linux/WSL), no cursor movement.
+    ///     Virtual so subclasses may replace full redraw with single-line output.
     /// </summary>
     protected virtual async Task RedrawScreenAsync(
         string line1,
@@ -246,7 +246,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
 
             if (lyrics != null)
             {
-                foreach (var l in lyrics)
+                foreach (string l in lyrics)
                     Console.WriteLine(l);
             }
         }
@@ -257,8 +257,8 @@ public abstract class BaseLyricsCli : ILyricsProvider
     }
 
     /// <summary>
-    /// Outputs a single line. Can be used by lightweight CLI modes 
-    /// (such as status bar integration).
+    ///     Outputs a single line. Can be used by lightweight CLI modes
+    ///     (such as status bar integration).
     /// </summary>
     protected virtual void RenderSingleLine(string text)
     {

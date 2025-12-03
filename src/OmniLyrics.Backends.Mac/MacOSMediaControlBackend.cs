@@ -1,23 +1,31 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
 using OmniLyrics.Core;
+using Timer = System.Timers.Timer;
 
 namespace OmniLyrics.Backends.Mac;
 
 public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
 {
+    private long _lastElapsedMicros;
     private PlayerState? _lastState;
+    private long _lastTickMicros;
+
+    // timestamp / elapsed provided by stream
+    private long _lastTimestampMicros;
+    private bool _playing;
+
+    // timer for incremental position updates
+    private Timer? _posTimer;
     private Process? _proc;
     private Task? _streamLoop;
 
-    // timestamp / elapsed provided by stream
-    private long _lastTimestampMicros = 0;
-    private long _lastElapsedMicros = 0;
-    private bool _playing = false;
-
-    // timer for incremental position updates
-    private System.Timers.Timer? _posTimer;
-    private long _lastTickMicros = 0;
+    public void Dispose()
+    {
+        _proc?.Dispose();
+        _streamLoop?.Dispose();
+        _posTimer?.Dispose();
+    }
 
     public override PlayerState? GetCurrentState() => _lastState;
 
@@ -110,8 +118,8 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
                 : _playing;
 
             string bundle = payload.TryGetProperty("bundleIdentifier", out var xBid)
-                ? xBid.GetString() ?? "" 
-                : (_lastState?.SourceApp ?? "");
+                ? xBid.GetString() ?? ""
+                : _lastState?.SourceApp ?? "";
 
             // update baseline for timer
             _lastTimestampMicros = timestampMicros;
@@ -148,7 +156,7 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
     // --------------------------------------------------------------
     private void StartPositionTimer()
     {
-        _posTimer = new System.Timers.Timer(200);
+        _posTimer = new Timer(200);
         _posTimer.AutoReset = true;
 
         _posTimer.Elapsed += (_, _) =>
@@ -207,12 +215,5 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
         });
 
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _proc?.Dispose();
-        _streamLoop?.Dispose();
-        _posTimer?.Dispose();
     }
 }

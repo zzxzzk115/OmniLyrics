@@ -23,7 +23,7 @@ public static class MyArtistHelper
     private static List<string> SplitArtistsFromString(string separator, string artistDesc)
     {
         var result = artistDesc.Split(separator).ToList();
-        result.ForEach((a) => a.Trim()); // Trim
+        result.ForEach(a => a.Trim()); // Trim
         return result;
     }
 }

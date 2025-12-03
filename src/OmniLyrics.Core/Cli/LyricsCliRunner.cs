@@ -25,7 +25,7 @@ public static class LyricsCliRunner
         };
 
         // Create the CLI instance
-        BaseLyricsCli cli = CliFactory.Create(opt.Mode, backend);
+        var cli = CliFactory.Create(opt.Mode, backend);
 
         // Start backend normally
         await backend.StartAsync(cts.Token);

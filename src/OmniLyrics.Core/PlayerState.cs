@@ -1,7 +1,7 @@
 ﻿namespace OmniLyrics.Core;
 
 /// <summary>
-/// Media player state.
+///     Media player state.
 /// </summary>
 public class PlayerState
 {
@@ -17,22 +17,19 @@ public class PlayerState
     public int ArtworkHeight { get; set; }
 
     /// <summary>
-    /// Creates a full deep copy of this state (safe for overlays and multi-backend updates).
+    ///     Creates a full deep copy of this state (safe for overlays and multi-backend updates).
     /// </summary>
-    public PlayerState DeepCopy()
+    public PlayerState DeepCopy() => new()
     {
-        return new PlayerState
-        {
-            Title = this.Title,
-            Album = this.Album,
-            Position = this.Position,
-            Duration = this.Duration,
-            Playing = this.Playing,
-            SourceApp = this.SourceApp,
-            ArtworkUrl = this.ArtworkUrl,
-            ArtworkWidth = this.ArtworkWidth,
-            ArtworkHeight = this.ArtworkHeight,
-            Artists = new List<string>(this.Artists)
-        };
-    }
+        Title = Title,
+        Album = Album,
+        Position = Position,
+        Duration = Duration,
+        Playing = Playing,
+        SourceApp = SourceApp,
+        ArtworkUrl = ArtworkUrl,
+        ArtworkWidth = ArtworkWidth,
+        ArtworkHeight = ArtworkHeight,
+        Artists = new List<string>(Artists)
+    };
 }

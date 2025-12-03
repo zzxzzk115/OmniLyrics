@@ -1,11 +1,11 @@
 <Project>
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(RuntimeIdentifier)/</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(RuntimeIdentifier)/</BaseOutputPath>
-  </PropertyGroup>
+    <PropertyGroup>
+        <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(RuntimeIdentifier)/</BaseIntermediateOutputPath>
+        <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(RuntimeIdentifier)/</BaseOutputPath>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-	<DebugSymbols>False</DebugSymbols>
-	<DebugType>None</DebugType>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <DebugSymbols>False</DebugSymbols>
+        <DebugType>None</DebugType>
+    </PropertyGroup>
 </Project>
