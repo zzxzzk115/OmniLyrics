@@ -5,9 +5,12 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
-		<PublishSingleFile>true</PublishSingleFile>
 		<SelfContained>true</SelfContained>
 		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+		<PublishSingleFile>true</PublishSingleFile>
 	</PropertyGroup>
 
 	<ItemGroup>
