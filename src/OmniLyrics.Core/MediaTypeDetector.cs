@@ -23,7 +23,7 @@ public static class MediaTypeDetector
         else
             score -= 2;
 
-        // 2) Album: music tracks often have album name; video usually doesn't.
+        // 2) Album: music tracks often have album name; advertisement and video usually don't.
         if (!string.IsNullOrWhiteSpace(state.Album))
             score += 2;
 
@@ -32,7 +32,12 @@ public static class MediaTypeDetector
 
         if (dur.TotalSeconds <= 1)
         {
-            // extremely short → ads, UI sound, video fragment
+            // extremely short → UI sound
+            score -= 3;
+        }
+        else if (dur.TotalSeconds <= 30)
+        {
+            // typical advertisement
             score -= 3;
         }
         else if (dur.TotalMinutes is >= 2 and <= 7)
