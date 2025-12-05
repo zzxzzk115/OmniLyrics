@@ -43,8 +43,11 @@ public class LyricsService
                     var lyrics = await _neteaseApi.GetLyricNew(neteaseSong.Id);
                     if (lyrics == null)
                         return null;
-
-                    return ParseLyrics(lyrics.Yrc.Lyric, LyricsRawTypes.Yrc);
+                    
+                    if (lyrics.Yrc != null)
+                        return ParseLyrics(lyrics.Yrc.Lyric, LyricsRawTypes.Yrc);
+                    
+                    return ParseLyrics(lyrics.Lrc.Lyric,  LyricsRawTypes.Lrc);
                 }
             }
 
@@ -60,7 +63,10 @@ public class LyricsService
                 if (lyrics == null)
                     return null;
 
-                return ParseLyrics(lyrics.Yrc.Lyric, LyricsRawTypes.Yrc);
+                if (lyrics.Yrc != null)
+                    return ParseLyrics(lyrics.Yrc.Lyric, LyricsRawTypes.Yrc);
+                    
+                return ParseLyrics(lyrics.Lrc.Lyric,  LyricsRawTypes.Lrc);
             }
             else
             {
