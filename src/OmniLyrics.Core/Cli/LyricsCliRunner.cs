@@ -1,6 +1,5 @@
 ﻿using OmniLyrics.Core;
 using OmniLyrics.Core.Cli;
-using OmniLyrics.Core.Lyrics;
 using OmniLyrics.Web;
 
 public static class LyricsCliRunner
@@ -27,15 +26,11 @@ public static class LyricsCliRunner
         // Create the CLI instance
         var cli = CliFactory.Create(opt.Mode, backend);
 
-        // Start backend normally
-        await backend.StartAsync(cts.Token);
-
         // Start UDP control server
         var server = new CommandServer(backend);
         _ = server.StartAsync(cts.Token);
 
         // Start WebAPI server
-        var lyrics = new LyricsService();
         var webServer = new WebApiServer(backend, cli);
         _ = webServer.StartAsync(cts.Token);
 

@@ -55,7 +55,7 @@ public class DynamicBackend : BasePlayerBackend, IDisposable
         await Task.CompletedTask;
     }
 
-    private void HandleSubBackendStateChanged(object? sender, PlayerState state)
+    private void HandleSubBackendStateChanged(object? sender, PlayerState? state)
     {
         if (sender is not IPlayerBackend b)
             return;

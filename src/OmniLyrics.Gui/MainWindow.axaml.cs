@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using OmniLyrics.Gui.Models;
 
 namespace OmniLyrics.Gui;
 
@@ -18,6 +19,10 @@ public partial class MainWindow : Window
         // Show overlay interface with semi-transparent background
         TopBar.IsVisible = true;
         RootBorder.Background = new SolidColorBrush(Color.FromArgb(60, 0, 0, 0));
+        TransparencyLevelHint =
+        [
+            WindowTransparencyLevel.AcrylicBlur
+        ];
     }
 
     private void RootBorder_OnPointerExited(object? sender, PointerEventArgs e)
@@ -25,6 +30,34 @@ public partial class MainWindow : Window
         // Hide overlay and restore full transparency
         TopBar.IsVisible = false;
         RootBorder.Background = Brushes.Transparent;
+        TransparencyLevelHint =
+        [
+            WindowTransparencyLevel.Transparent
+        ];
+    }
+
+    private async void PrevButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var vm = (LyricsViewModel)DataContext;
+        if (vm == null) return;
+
+        await vm.Backend.PreviousAsync();
+    }
+
+    private async void PlayPauseButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var vm = (LyricsViewModel)DataContext;
+        if (vm == null) return;
+
+        await vm.Backend.TogglePlayPauseAsync();
+    }
+
+    private async void NextButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var vm = (LyricsViewModel)DataContext;
+        if (vm == null) return;
+
+        await vm.Backend.NextAsync();
     }
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e)

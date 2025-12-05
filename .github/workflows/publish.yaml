@@ -1,37 +1,73 @@
-name: Build OmniLyrics CLI
+name: Build OmniLyrics
 
 on:
   push:
-    branches: [master]
+    branches: [ master ]
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }} (${{ matrix.rid }})
+    name: Build (${{ matrix.os }} / ${{
+      matrix.rid }} / ${{ matrix.projectName }})
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Windows x64
           - os: windows-latest
             rid: win-x64
-            project: src/OmniLyrics.Cli.Windows/OmniLyrics.Cli.Windows.csproj
+            project: src/OmniLyrics.Cli/OmniLyrics.Cli.csproj
+            projectName: cli
 
+          - os: windows-latest
+            rid: win-x64
+            project: src/OmniLyrics.Gui/OmniLyrics.Gui.csproj
+            projectName: gui
+
+          # Linux x64
           - os: ubuntu-latest
             rid: linux-x64
             project: src/OmniLyrics.Cli/OmniLyrics.Cli.csproj
+            projectName: cli
 
+          - os: ubuntu-latest
+            rid: linux-x64
+            project: src/OmniLyrics.Gui/OmniLyrics.Gui.csproj
+            projectName: gui
+
+          # Linux arm64
           - os: ubuntu-latest
             rid: linux-arm64
             project: src/OmniLyrics.Cli/OmniLyrics.Cli.csproj
+            projectName: cli
 
+          - os: ubuntu-latest
+            rid: linux-arm64
+            project: src/OmniLyrics.Gui/OmniLyrics.Gui.csproj
+            projectName: gui
+
+          # macOS x64
           - os: macos-latest
             rid: osx-x64
             project: src/OmniLyrics.Cli/OmniLyrics.Cli.csproj
+            projectName: cli
 
+          - os: macos-latest
+            rid: osx-x64
+            project: src/OmniLyrics.Gui/OmniLyrics.Gui.csproj
+            projectName: gui
+
+          # macOS arm64
           - os: macos-latest
             rid: osx-arm64
             project: src/OmniLyrics.Cli/OmniLyrics.Cli.csproj
+            projectName: cli
+
+          - os: macos-latest
+            rid: osx-arm64
+            project: src/OmniLyrics.Gui/OmniLyrics.Gui.csproj
+            projectName: gui
 
     steps:
       - name: Checkout Repo
@@ -45,12 +81,12 @@ jobs:
       - name: Restore
         run: dotnet restore ${{ matrix.project }}
 
-      - name: Publish (Self-contained single file, no pdb)
+      - name: Publish
         run: |
-          dotnet publish ${{ matrix.project }} -c Release -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}
+          dotnet publish ${{ matrix.project }} -c Release -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}/${{ matrix.projectName }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: omnilyrics-cli-${{ matrix.rid }}
-          path: publish/${{ matrix.rid }}
+          name: omnilyrics-${{ matrix.projectName }}-${{ matrix.rid }}
+          path: publish/${{ matrix.rid }}/${{ matrix.projectName }}

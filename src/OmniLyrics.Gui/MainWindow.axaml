@@ -1,12 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:OmniLyrics.Gui.Models"
         x:Class="OmniLyrics.Gui.MainWindow"
         Width="800"
-        Height="120"
+        Height="150"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
-        CanResize="False">
+        CanResize="False"
+        Topmost="True"
+        x:DataType="models:LyricsViewModel">
 
     <!-- 
         https://docs.avaloniaui.net/zh-Hans/docs/reference/controls/path-icon
@@ -15,9 +18,14 @@
     <Window.Resources>
         <StreamGeometry x:Key="previous_regular">M3 20.25C3 20.6642 3.33579 21 3.75 21C4.16421 21 4.5 20.6642 4.5 20.25L4.5 3.75C4.5 3.33579 4.16422 3 3.75 3C3.33579 3 3 3.33579 3 3.75V20.25Z M18.2303 20.4748C19.3883 21.305 21 20.4774 21 19.0526L21 4.82961C21 3.44582 19.4698 2.60946 18.3051 3.35665L7.8354 10.073C6.79467 10.7407 6.75574 12.2477 7.76062 12.9682L18.2303 20.4748ZM19.5 19.0526C19.5 19.2561 19.2697 19.3743 19.1043 19.2557L8.63465 11.7492C8.4911 11.6463 8.49666 11.431 8.64534 11.3356L19.115 4.61919C19.2814 4.51245 19.5 4.63193 19.5 4.82961L19.5 19.0526Z</StreamGeometry>
         <StreamGeometry x:Key="play_regular">M13.7501344,8.41212026 L38.1671892,21.1169293 C39.7594652,21.9454306 40.3786269,23.9078584 39.5501255,25.5001344 C39.2420737,26.0921715 38.7592263,26.5750189 38.1671892,26.8830707 L13.7501344,39.5878797 C12.1578584,40.4163811 10.1954306,39.7972194 9.36692926,38.2049434 C9.12586301,37.7416442 9,37.2270724 9,36.704809 L9,11.295191 C9,9.50026556 10.4550746,8.045191 12.25,8.045191 C12.6976544,8.045191 13.1396577,8.13766178 13.5485655,8.31589049 L13.7501344,8.41212026 Z M12.5961849,10.629867 L12.4856981,10.5831892 C12.4099075,10.5581 12.3303482,10.545191 12.25,10.545191 C11.8357864,10.545191 11.5,10.8809774 11.5,11.295191 L11.5,36.704809 C11.5,36.8253313 11.5290453,36.9440787 11.584676,37.0509939 C11.7758686,37.4184422 12.2287365,37.5613256 12.5961849,37.370133 L37.0132397,24.665324 C37.1498636,24.5942351 37.2612899,24.4828088 37.3323788,24.3461849 C37.5235714,23.9787365 37.380688,23.5258686 37.0132397,23.334676 L12.5961849,10.629867 Z</StreamGeometry>
+        <StreamGeometry x:Key="pause_regular">M17.75,7 C19.5449254,7 21,8.45507456 21,10.25 L21,37.75 C21,39.5449254 19.5449254,41 17.75,41 L12.25,41 C10.4550746,41 9,39.5449254 9,37.75 L9,10.25 C9,8.45507456 10.4550746,7 12.25,7 L17.75,7 Z M35.75,7 C37.5449254,7 39,8.45507456 39,10.25 L39,37.75 C39,39.5449254 37.5449254,41 35.75,41 L30.25,41 C28.4550746,41 27,39.5449254 27,37.75 L27,10.25 C27,8.45507456 28.4550746,7 30.25,7 L35.75,7 Z M17.75,9.5 L12.25,9.5 C11.8357864,9.5 11.5,9.83578644 11.5,10.25 L11.5,37.75 C11.5,38.1642136 11.8357864,38.5 12.25,38.5 L17.75,38.5 C18.1642136,38.5 18.5,38.1642136 18.5,37.75 L18.5,10.25 C18.5,9.83578644 18.1642136,9.5 17.75,9.5 Z M35.75,9.5 L30.25,9.5 C29.8357864,9.5 29.5,9.83578644 29.5,10.25 L29.5,37.75 C29.5,38.1642136 29.8357864,38.5 30.25,38.5 L35.75,38.5 C36.1642136,38.5 36.5,38.1642136 36.5,37.75 L36.5,10.25 C36.5,9.83578644 36.1642136,9.5 35.75,9.5 Z</StreamGeometry>
         <StreamGeometry x:Key="next_regular">M21 3.75C21 3.33579 20.6642 3 20.25 3C19.8358 3 19.5 3.33579 19.5 3.75V20.25C19.5 20.6642 19.8358 21 20.25 21C20.6642 21 21 20.6642 21 20.25V3.75Z M5.7697 3.52521C4.61175 2.69498 3 3.5226 3 4.94743V19.1704C3 20.5542 4.53019 21.3905 5.69492 20.6434L16.1646 13.927C17.2053 13.2593 17.2443 11.7523 16.2394 11.0318L5.7697 3.52521ZM4.5 4.94743C4.5 4.74388 4.73025 4.62565 4.89567 4.74425L15.3653 12.2508C15.5089 12.3537 15.5033 12.569 15.3547 12.6644L4.88499 19.3808C4.7186 19.4876 4.5 19.3681 4.5 19.1704V4.94743Z</StreamGeometry>
         <StreamGeometry x:Key="dismiss_regular">M3.52499419,3.71761187 L3.61611652,3.61611652 C4.0717282,3.16050485 4.79154862,3.13013074 5.28238813,3.52499419 L5.38388348,3.61611652 L14,12.233 L22.6161165,3.61611652 C23.1042719,3.12796116 23.8957281,3.12796116 24.3838835,3.61611652 C24.8720388,4.10427189 24.8720388,4.89572811 24.3838835,5.38388348 L15.767,14 L24.3838835,22.6161165 C24.8394952,23.0717282 24.8698693,23.7915486 24.4750058,24.2823881 L24.3838835,24.3838835 C23.9282718,24.8394952 23.2084514,24.8698693 22.7176119,24.4750058 L22.6161165,24.3838835 L14,15.767 L5.38388348,24.3838835 C4.89572811,24.8720388 4.10427189,24.8720388 3.61611652,24.3838835 C3.12796116,23.8957281 3.12796116,23.1042719 3.61611652,22.6161165 L12.233,14 L3.61611652,5.38388348 C3.16050485,4.9282718 3.13013074,4.20845138 3.52499419,3.71761187 L3.61611652,3.61611652 L3.52499419,3.71761187 Z</StreamGeometry>
     </Window.Resources>
+
+    <Window.DataContext>
+        <models:LyricsViewModel />
+    </Window.DataContext>
 
     <Border x:Name="RootBorder"
             Background="Transparent"
@@ -46,7 +54,7 @@
                         <!--        Height="22"/> -->
 
                         <TextBlock x:Name="HeaderText"
-                                   Text="Artist - Song Name - Album"
+                                   Text="{Binding DisplayTitle}"
                                    FontSize="14"
                                    Foreground="White" />
                     </StackPanel>
@@ -59,19 +67,29 @@
 
 
                         <!-- Prev Button -->
-                        <Button>
+                        <Button Click="PrevButton_Click">
                             <PathIcon Height="12" Width="12" Foreground="White"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button>
-                            <PathIcon Height="12" Width="12" Foreground="White"
-                                      Data="{StaticResource play_regular}" />
+                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}">
+                            <PathIcon
+                                Height="12"
+                                Width="12"
+                                Foreground="White"
+                                Data="{StaticResource play_regular}" />
+                        </Button>
+                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding Playing}">
+                            <PathIcon
+                                Height="12"
+                                Width="12"
+                                Foreground="White"
+                                Data="{StaticResource pause_regular}" />
                         </Button>
 
                         <!-- Next Button -->
-                        <Button>
+                        <Button Click="NextButton_Click">
                             <PathIcon Height="12" Width="12" Foreground="White"
                                       Data="{StaticResource next_regular}" />
                         </Button>
@@ -88,26 +106,40 @@
             <StackPanel
                 Orientation="Vertical"
                 Spacing="6"
-                Margin="0,20,0,0"
+                Margin="0,10,0,0"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center">
                 <!-- Primary lyric line -->
                 <TextBlock x:Name="PrimaryLyric"
-                           Text="Primary Lyric"
-                           FontSize="24"
+                           Text="{Binding CurrentLine.Text}"
+                           FontSize="32"
                            FontWeight="Bold"
-                           Foreground="White"
+                           Foreground="#FFF9E9C8"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
-                           TextAlignment="Center" />
+                           TextAlignment="Center">
+                    <TextBlock.Effect>
+                        <DropShadowEffect BlurRadius="0"
+                                          Color="Black"
+                                          OffsetX="2"
+                                          OffsetY="2" />
+                    </TextBlock.Effect>
+                </TextBlock>
 
                 <!-- Secondary lyric line -->
                 <TextBlock x:Name="SecondLyric"
-                           Text="Second Lyric (Can be translated lyric)"
-                           FontSize="16"
-                           Foreground="White"
+                           Text="{Binding SecondaryLine.Text}"
+                           FontSize="24"
+                           Foreground="#DDDDDDDD"
                            HorizontalAlignment="Center"
-                           VerticalAlignment="Center" />
+                           VerticalAlignment="Center">
+                    <TextBlock.Effect>
+                        <DropShadowEffect BlurRadius="0"
+                                          Color="Black"
+                                          OffsetX="2"
+                                          OffsetY="2" />
+                    </TextBlock.Effect>
+                </TextBlock>
             </StackPanel>
         </Grid>
     </Border>

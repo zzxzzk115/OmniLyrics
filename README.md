@@ -4,6 +4,10 @@ OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, T
 
 ## Showcase
 
+Windows GUI:
+
+![GUI Windows](./media/images/gui_windows.png)
+
 Windows Terminal (Default Mode):
 
 ![CLI (Windows Terminal)](./media/images/cli_windows_terminal.png)

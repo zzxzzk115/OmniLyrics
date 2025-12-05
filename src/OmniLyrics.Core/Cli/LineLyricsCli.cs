@@ -3,23 +3,29 @@ using OmniLyrics.Core.Cli;
 
 public class LineLyricsCli : BaseLyricsCli
 {
-    public LineLyricsCli(IPlayerBackend backend) : base(backend) { }
+    public LineLyricsCli(IPlayerBackend backend)
+        : base(backend)
+    {
+    }
 
     protected override void RenderLyricsFrame()
     {
         var state = Backend.GetCurrentState();
-        if (state is null || CurrentLyrics is null)
+        var lyrics = LyricsManager.Current;
+
+        if (state is null || lyrics is null || lyrics.Count == 0)
             return;
 
         var pos = state.Position;
-        int idx = CurrentLyrics.FindLastIndex(l => l.Timestamp <= pos);
+        int idx = lyrics.FindLastIndex(l => l.Timestamp <= pos);
         if (idx < 0 || idx == LastCenterIndex)
             return;
 
         LastCenterIndex = idx;
-        RenderSingleLine(CurrentLyrics[idx].Text);
+        RenderSingleLine(lyrics[idx].Text);
     }
 
+    // Disable full redraw path entirely
     protected override Task RedrawScreenAsync(string a, string b, string c, List<string>? d)
-        => Task.CompletedTask; // Disable full redraw
+        => Task.CompletedTask;
 }

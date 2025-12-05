@@ -16,7 +16,7 @@ public class LyricsService
 
     private readonly YesPlayMusicApi _yesPlayMusicsLyricsApi = new();
 
-    public async Task<List<LyricsLine>?> SearchLyricLinesAsync(PlayerState state, bool karaoke = true)
+    public async Task<List<LyricsLine>?> SearchLyricLinesAsync(PlayerState state, bool karaoke)
     {
         try
         {
