@@ -9,6 +9,7 @@
         TransparencyLevelHint="Transparent"
         CanResize="False"
         Topmost="True"
+        ShowInTaskbar="False"
         x:DataType="models:LyricsViewModel">
 
     <!-- 

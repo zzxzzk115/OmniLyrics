@@ -44,6 +44,7 @@ public class LyricsViewModel : INotifyPropertyChanged
             {
                 var state = _backend.GetCurrentState();
                 if (state == null) continue;
+                if (MediaTypeDetector.Guess(state) != MediaType.Music) continue;
 
                 Update(state);
                 await Task.Delay(16);
@@ -137,6 +138,10 @@ public class LyricsViewModel : INotifyPropertyChanged
 
     private async void Backend_OnStateChanged(object? _, PlayerState state)
     {
+        // Skip non-music media
+        if (MediaTypeDetector.Guess(state) != MediaType.Music)
+            return;
+
         await _lyrics.UpdateAsync(state, true);
 
         Update(state);

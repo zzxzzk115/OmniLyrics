@@ -12,6 +12,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         TopBar.IsVisible = false; // Hidden until mouse hover
+        Closing += (s, e) =>
+        {
+            ((Window)s).Hide();
+            e.Cancel = true;
+        };
     }
 
     private void RootBorder_OnPointerEntered(object? sender, PointerEventArgs e)
@@ -38,24 +43,21 @@ public partial class MainWindow : Window
 
     private async void PrevButton_Click(object? sender, RoutedEventArgs e)
     {
-        var vm = (LyricsViewModel)DataContext;
-        if (vm == null) return;
+        var vm = (LyricsViewModel)DataContext!;
 
         await vm.Backend.PreviousAsync();
     }
 
     private async void PlayPauseButton_Click(object? sender, RoutedEventArgs e)
     {
-        var vm = (LyricsViewModel)DataContext;
-        if (vm == null) return;
+        var vm = (LyricsViewModel)DataContext!;
 
         await vm.Backend.TogglePlayPauseAsync();
     }
 
     private async void NextButton_Click(object? sender, RoutedEventArgs e)
     {
-        var vm = (LyricsViewModel)DataContext;
-        if (vm == null) return;
+        var vm = (LyricsViewModel)DataContext!;
 
         await vm.Backend.NextAsync();
     }

@@ -7,6 +7,10 @@
         <SelfContained>true</SelfContained>
     </PropertyGroup>
 
+    <ItemGroup>
+        <AvaloniaResource Include="Assets/app.ico"/>
+    </ItemGroup>
+
     <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
         <PublishSingleFile>true</PublishSingleFile>
     </PropertyGroup>

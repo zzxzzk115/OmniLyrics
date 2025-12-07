@@ -4,7 +4,7 @@ OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, T
 
 ## Showcase
 
-Windows GUI:
+Windows GUI (Top: Cider Mini Player, Bottom: OmniLyrics):
 
 ![GUI Windows](./media/images/gui_windows.png)
 
@@ -20,16 +20,23 @@ Linux Waybar (Line Mode, --mode line):
 
 ![CLI (Linux Waybar)](./media/images/cli_linux_waybar.jpg)
 
-
 ## Build Instruction
+
 Download and Install [.NET SDK 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 
+> On macOS, you need to install `media-control`:
+> ```bash
+> brew install media-control
+> ```
+
 Clone:
+
 ```bash
 git clone https://github.com/zzxzzk115/OmniLyrics.git
 ```
 
 Build and Run:
+
 ```bash
 cd OmniLyrics
 
@@ -91,6 +98,7 @@ This allows external apps, widgets, or scripts to fetch lyrics or control playba
 Returns the current track's parsed LRC lyrics as JSON.
 
 **Response**
+
 ```json
 [
   { "timestamp": "00:12.45", "text": "We're no strangers to love" },
@@ -99,6 +107,7 @@ Returns the current track's parsed LRC lyrics as JSON.
 ```
 
 If no lyrics are available:
+
 ```json
 null
 ```
@@ -110,27 +119,35 @@ null
 All control endpoints return `200 OK` on success.
 
 #### **POST /playback/play**
+
 Starts playback.
 
 #### **POST /playback/pause**
+
 Pauses playback.
 
 #### **POST /playback/toggle**
+
 Toggles play/pause.
 
 #### **POST /playback/next**
+
 Skips to the next track.
 
 #### **POST /playback/prev**
+
 Skips to the previous track.
 
 #### **POST /playback/seek**
+
 Seek to a given position.
 
 **Body:**
+
 ```json
 { "position": 42.5 }
 ```
+
 (seconds)
 
 ---
@@ -167,22 +184,27 @@ Settings -> Connectivity -> Manage External Application Access to Cider -> Disab
 > Currently, we don't have custom token support.
 
 ## TODO List
+
 Common Backends:
+
 - [x] SMTC for Windows
 - [x] MPRIS for Linux
 - [x] media-control for macOS
 
 Software-specific Backends:
+
 - [x] [Cider v3](https://cider.sh/) (Current Commercial Version)
 - [ ] [Cider v2](https://v2.cider.sh/) (Previous Commercial Version)
 - [ ] [Cider v1](https://github.com/ciderapp/Cider) (Open Source Version)
 - [x] [YesPlayMusic](https://github.com/qier222/YesPlayMusic)
 
 Server & API
+
 - [x] UDP Client & Server (localhost:32651)
 - [x] Web API (http://localhost:27270)
 
 CLI:
+
 - [x] Multiple Line Mode (Default)
 - [x] Single Line Mode (for Waybar)
 - [x] Remote Control (through UDP commands)
@@ -192,6 +214,7 @@ TUI:
 GUI:
 
 ## Acknowledgement
+
 - [Lyricify-Lyrics-Helper](https://github.com/WXRIW/Lyricify-Lyrics-Helper)
 - [WindowsMediaController](https://github.com/DubyaDude/WindowsMediaController)
 - [Tmds.DBus](https://github.com/tmds/Tmds.DBus)

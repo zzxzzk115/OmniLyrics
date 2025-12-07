@@ -1,10 +1,27 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:OmniLyrics.Gui.Models"
              x:Class="OmniLyrics.Gui.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Default"
+             x:DataType="models:TrayViewModel">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/app.ico"
+                      ToolTipText="OmniLyrics">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="{Binding ShowLyricsText}" Command="{Binding ToggleLyricsCommand}" />
+                        <NativeMenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+                        <NativeMenuItem Header="Quit" Command="{Binding QuitCommand}" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
 </Application>
