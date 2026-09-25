@@ -10,6 +10,22 @@
             {
                 string arg = args[i];
 
+                if (arg is "--listen" or "--host" or "--http-port" or "--udp-port")
+                {
+                    if (++i >= args.Length) throw new ArgumentException($"Missing value for {arg}.");
+                    var value = args[i];
+                    if (arg == "--listen") opts.ListenAddress = value;
+                    else if (arg == "--host") opts.ControlHost = value;
+                    else
+                    {
+                        if (!int.TryParse(value, out var port) || port is < 1 or > 65535)
+                            throw new ArgumentException("Ports must be between 1 and 65535.");
+                        if (arg == "--http-port") opts.HttpPort = port;
+                        else opts.UdpPort = port;
+                    }
+                    continue;
+                }
+
                 // mode
                 if (arg == "--mode" || arg == "-m")
                 {
@@ -81,4 +97,8 @@ public sealed class CliOptions
     public ControlAction Control { get; set; } = ControlAction.None;
 
     public double? SeekPositionSeconds { get; set; }
+    public string? ListenAddress { get; set; }
+    public string? ControlHost { get; set; }
+    public int? HttpPort { get; set; }
+    public int? UdpPort { get; set; }
 }
