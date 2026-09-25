@@ -11,18 +11,21 @@ public class LineLyricsCli : BaseLyricsCli
     protected override void RenderLyricsFrame()
     {
         var state = Backend.GetCurrentState();
-        var lyrics = LyricsManager.Current;
+        var snapshot = CaptureLyrics(state);
+        var lyrics = snapshot.Lines;
 
-        if (state is null || lyrics is null || lyrics.Count == 0)
-            return;
+        if (RenderEmptyFrame(state, snapshot, singleLine: true) || state == null || lyrics == null) return;
 
         var pos = state.Position;
         int idx = lyrics.FindLastIndex(l => l.Timestamp <= pos);
-        if (idx < 0 || idx == LastCenterIndex)
+        var track = OmniLyrics.Core.Shared.LyricsCache.TrackKey(state);
+        if (idx == LastCenterIndex && snapshot.Revision == LastLyricsRevision && LastSongId == track)
             return;
 
+        LastSongId = track;
         LastCenterIndex = idx;
-        RenderSingleLine(lyrics[idx].Text);
+        LastLyricsRevision = snapshot.Revision;
+        RenderSingleLine(idx >= 0 ? lyrics[idx].Text : $"{string.Join(", ", state.Artists)} - {state.Title}");
     }
 
     // Disable full redraw path entirely
