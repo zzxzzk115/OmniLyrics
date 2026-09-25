@@ -14,6 +14,7 @@ public partial class ConfigurationEditorWindow : Window
     public ConfigurationEditorWindow()
     {
         InitializeComponent();
+        _ = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
         ConfigurationPath.Text = UserConfiguration.SettingsPath;
         Reload();
         _watcher = new();

@@ -20,6 +20,8 @@ The favorite button appears only when supported; the current adapter uses Cider 
 
 ## Layouts and appearance
 
+In **Settings → General → Interface scale**, the default follows the current monitor. Choose 100–200% or a custom 75–300% scale to override it for all windows, immediately. This does not change your saved lyric font sizes. In the configuration file, `appearance.uiScale` is `null` for system scaling or a factor such as `1.5` for 150%.
+
 Choose a layout under **Settings → Appearance**, then click **Apply**.
 
 | Preset | Display |

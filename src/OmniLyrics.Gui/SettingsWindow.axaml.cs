@@ -18,6 +18,8 @@ public partial class SettingsWindow : Window
 {
     public bool KeepAlive { get; set; }
     private bool _reloading;
+    private bool _savingScale;
+    private AppearanceSettings? _lastWindowState;
     private readonly ConfigurationWatcher _watcher;
     private CiderConnectionSettings? _loadedCider;
     private bool _settingPalette;
@@ -29,6 +31,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        _ = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
         if (OperatingSystem.IsLinux())
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dialog);
         Deactivated += (_, _) => ReleaseSearchFocus();
@@ -76,6 +79,8 @@ public partial class SettingsWindow : Window
             UserConfiguration.ValidateConfigurationText(UserConfiguration.ReadConfigurationText());
             LanguageMode.SelectedIndex = UserConfiguration.LoadLanguage() switch { "zh-CN" => 1, "en" => 2, _ => 0 };
             var appearance = UserConfiguration.LoadAppearance();
+            LoadScale(appearance.UiScale);
+            _lastWindowState = appearance;
             PresetMode.SelectedIndex = appearance.Preset switch { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
             ShowLogoMode.IsChecked = appearance.ShowLogo;
             ShowPlayerMode.IsChecked = appearance.ShowPlayerInfo;
@@ -179,6 +184,48 @@ public partial class SettingsWindow : Window
     }
 
 
+    private static readonly double[] ScalePresets = [1, 1.25, 1.5, 1.75, 2];
+
+    private void LoadScale(double? scale)
+    {
+        var reloading = _reloading;
+        _reloading = true;
+        try
+        {
+            var index = scale is { } value ? Array.IndexOf(ScalePresets, value) : -1;
+            UiScaleMode.SelectedIndex = scale == null ? 0 : index < 0 ? 6 : index + 1;
+            CustomUiScale.Value = (decimal)((scale ?? 1) * 100);
+            CustomScaleRow.IsVisible = UiScaleMode.SelectedIndex == 6;
+        }
+        finally { _reloading = reloading; }
+    }
+
+    private void UiScaleMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_reloading || CustomScaleRow == null || CustomUiScale == null || UiScaleMode.SelectedIndex < 0) return;
+        CustomScaleRow.IsVisible = UiScaleMode.SelectedIndex == 6;
+        if (UiScaleMode.SelectedIndex == 6) return;
+        SaveScale(UiScaleMode.SelectedIndex == 0 ? null : ScalePresets[UiScaleMode.SelectedIndex - 1]);
+    }
+
+    private void CustomUiScale_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (!_reloading && UiScaleMode?.SelectedIndex == 6 && e.NewValue is >= 75 and <= 300)
+            SaveScale((double)e.NewValue.Value / 100);
+    }
+
+    private void SaveScale(double? scale)
+    {
+        try
+        {
+            _savingScale = true;
+            AppearancePreferences.Save(AppearancePreferences.Current with { UiScale = scale });
+            _watcher.AcceptCurrent();
+        }
+        catch { AppearanceStatus.Text = Localization.Get("PreferencesSaveError"); }
+        finally { _savingScale = false; }
+    }
+
     private void ApplyButton_Click(object? sender, RoutedEventArgs e)
     {
         try
@@ -193,7 +240,7 @@ public partial class SettingsWindow : Window
                 (double)(LyricFontSize.Value ?? 32), (double)(TranslationSize.Value ?? 18),
                 Rgb(TextColorPicker.Color), Rgb(HighlightColorPicker.Color), Rgb(BackgroundColorPicker.Color),
                 OpacitySlider.Value / 100, BlurMode.IsChecked == true,
-                ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color));
+                ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color), AppearancePreferences.Current.UiScale);
             if (PlayerLyricsEnabled.IsChecked != true && QQLyricsEnabled.IsChecked != true && NeteaseLyricsEnabled.IsChecked != true)
             {
                 SettingsTabs.SelectedItem = LyricsTab;
@@ -330,7 +377,7 @@ public partial class SettingsWindow : Window
                     pair.Value.English == status.Text || pair.Value.Chinese == status.Text);
                 if (entry.Key != null) status.Text = Localization.Get(entry.Key);
             }
-            foreach (var combo in new[] { PresetMode, IntegrationMode, ThemeMode, LanguageMode, SearchStrategyMode, MatchMode, PreferredLyricSourceMode })
+            foreach (var combo in new[] { PresetMode, IntegrationMode, ThemeMode, LanguageMode, UiScaleMode, SearchStrategyMode, MatchMode, PreferredLyricSourceMode })
             { var index = combo.SelectedIndex; combo.SelectedIndex = -1; combo.SelectedIndex = index; }
             var name = ThemePresetName.Text;
             ReloadThemePresets((ThemePresetMode.SelectedItem as ThemeOption)?.SavedName);
@@ -346,9 +393,13 @@ public partial class SettingsWindow : Window
 
     private void RefreshWindowState()
     {
-        LockedMode.IsChecked = AppearancePreferences.Current.Locked;
-        PresetMode.SelectedIndex = AppearancePreferences.Current.Preset switch
-        { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
+        var current = AppearancePreferences.Current;
+        if (_lastWindowState?.Locked != current.Locked) LockedMode.IsChecked = current.Locked;
+        if (_lastWindowState?.Preset != current.Preset)
+            PresetMode.SelectedIndex = current.Preset switch
+            { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
+        if (!_savingScale && _lastWindowState?.UiScale != current.UiScale) LoadScale(current.UiScale);
+        _lastWindowState = current;
     }
 
     private void ResetAppearanceButton_Click(object? sender, RoutedEventArgs e)

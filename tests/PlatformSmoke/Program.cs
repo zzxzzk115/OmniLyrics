@@ -57,6 +57,24 @@ if (OperatingSystem.IsMacOS())
         if (data != IntPtr.Zero) Native.CFRelease(data);
     }
 }
+// Exercise the same layout transform on both native desktop backends.
+var settings = new SettingsWindow(); settings.Show();
+void Pump()
+{
+    var frame = new DispatcherFrame();
+    using var timer = DispatcherTimer.RunOnce(() => frame.Continue = false, TimeSpan.FromMilliseconds(250));
+    Dispatcher.UIThread.PushFrame(frame);
+}
+Pump();
+var scaleMode = settings.FindControl<ComboBox>("UiScaleMode")!;
+foreach (var index in new[] { 1, 3, 5, 0 })
+{
+    scaleMode.SelectedIndex = index; Pump();
+    var target = index == 0 ? settings.RenderScaling : index == 1 ? 1 : index == 3 ? 1.5 : 2;
+    var actual = Math.Abs(scaleMode.TransformToVisual(settings)!.Value.M11) * settings.RenderScaling;
+    Check($"Native window applies {target:P0} UI scaling without double DPI", Math.Abs(actual - target) < .01);
+}
+settings.Close();
 if (Directory.Exists(config)) Directory.Delete(config, true);
 
 static class Native

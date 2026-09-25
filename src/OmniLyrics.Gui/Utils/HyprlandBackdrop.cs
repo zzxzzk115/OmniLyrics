@@ -69,7 +69,7 @@ internal sealed class HyprlandBackdrop : IDisposable
         }
     }
 
-    private static async Task<string?> RunAsync(CancellationToken token, params string[] arguments)
+    internal static async Task<string?> RunAsync(CancellationToken token, params string[] arguments)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(2));

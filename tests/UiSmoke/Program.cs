@@ -522,6 +522,79 @@ foreach (var preset in new[] { "classic", "compact", "focus", "portrait", "fulls
     Check(preset + " unlock button responds to the next click", !window.IsLocked);
 }
 window.Hide();
+// Absolute UI scaling must also work when the native display is already HiDPI.
+AppearancePreferences.Save(AppearancePreferences.Current with { Preset = "classic", UiScale = null });
+window.Show(); Pump(300);
+var scaleMode = settings.FindControl<ComboBox>("UiScaleMode")!;
+var customScale = settings.FindControl<NumericUpDown>("CustomUiScale")!;
+var settingsTabs = settings.FindControl<TabControl>("SettingsTabs")!;
+settingsTabs.SelectedItem = settings.FindControl<TabItem>("GeneralTab");
+settings.Show(); Pump();
+double PhysicalScale(Control control, TopLevel host) => Math.Abs(control.TransformToVisual(host)!.Value.M11) * host.RenderScaling;
+var lyricRoot = window.FindControl<Control>("RootBorder")!;
+Check("UI scale defaults to the native monitor scale", UserConfiguration.LoadAppearance().UiScale == null
+    && Math.Abs(PhysicalScale(lyricRoot, window) - window.RenderScaling) < .01);
+var typeSize = UserConfiguration.LoadAppearance().FontSize;
+for (var i = 1; i <= 5; i++)
+{
+    var expected = 1 + (i - 1) * .25;
+    scaleMode.SelectedIndex = i; Pump(350);
+    Check($"{expected:P0} scales all windows immediately without double DPI",
+        Math.Abs(PhysicalScale(lyricRoot, window) - expected) < .01
+        && Math.Abs(PhysicalScale(scaleMode, settings) - expected) < .01
+        && UserConfiguration.LoadAppearance().UiScale == expected);
+    Check($"{expected:P0} keeps the lyric window's minimum size scaled",
+        Math.Abs(window.MinWidth * window.RenderScaling - 380 * expected) < 1);
+}
+Check("Interface scaling keeps configured lyric typography unchanged", UserConfiguration.LoadAppearance().FontSize == typeSize);
+scaleMode.SelectedIndex = 6; customScale.Value = 142; Pump(350);
+Check("Custom scaling persists and keeps its numeric editor visible", UserConfiguration.LoadAppearance().UiScale == 1.42
+    && scaleMode.SelectedIndex == 6 && settings.FindControl<Control>("CustomScaleRow")!.IsVisible
+    && Math.Abs(PhysicalScale(lyricRoot, window) - 1.42) < .01);
+var scaleEditor = new ConfigurationEditorWindow(); scaleEditor.Show(); Pump();
+Check("New configuration editors inherit the current scale", Math.Abs(PhysicalScale(scaleEditor.FindControl<TextBox>("ConfigurationText")!, scaleEditor) - 1.42) < .01);
+scaleEditor.Close();
+scaleMode.IsDropDownOpen = true; Pump();
+var scalePopup = scaleMode.GetVisualDescendants().OfType<Popup>().FirstOrDefault()
+    ?? scaleMode.GetLogicalDescendants().OfType<Popup>().First();
+var popupRoot = (TopLevel)scalePopup.Child!.GetVisualRoot()!;
+Check("Scale selector popup inherits the interface transform", scalePopup.InheritsTransform
+    && Math.Abs(PhysicalScale(scalePopup.Child, popupRoot) - 1.42) < .01);
+scaleMode.IsDropDownOpen = false; Pump();
+PointerClick(settings, settings.FindControl<TextBox>("SettingsSearch")!);
+Check("Search remains clickable after custom scaling", settings.FindControl<TextBox>("SettingsSearch")!.IsFocused);
+Capture(settings, "settings-scale-custom");
+customScale.Value = 300; Pump(350);
+var scaleScroll = (ScrollViewer)settings.Content!;
+Check("Large custom scale keeps the window on screen with scrollable controls", settings.ClientSize.Height * settings.RenderScaling <= 1600
+    && scaleScroll.Extent.Height > scaleScroll.Viewport.Height);
+scaleScroll.Offset = new Vector(0, scaleScroll.Extent.Height); Pump();
+var applyInWindow = settings.FindControl<Button>("ApplyButton")!.TranslatePoint(new Point(0, 0), settings)!.Value;
+Check("Large-scale settings footer remains reachable by scrolling", applyInWindow.Y >= 0 && applyInWindow.Y < settings.ClientSize.Height);
+customScale.Value = 142; Pump();
+settings.FindControl<ComboBox>("PresetMode")!.SelectedIndex = 2;
+settings.FindControl<ToggleSwitch>("LockedMode")!.IsChecked = true;
+scaleMode.SelectedIndex = 1; Pump();
+Check("Changing scale preserves other unsaved settings", settings.FindControl<ComboBox>("PresetMode")!.SelectedIndex == 2
+    && settings.FindControl<ToggleSwitch>("LockedMode")!.IsChecked == true);
+var scaleDocument = JsonNode.Parse(UserConfiguration.ReadConfigurationText())!;
+scaleDocument["appearance"]!["uiScale"] = 1.6;
+File.WriteAllText(UserConfiguration.SettingsPath, scaleDocument.ToJsonString());
+Until(() => UserConfiguration.LoadAppearance().UiScale == AppearancePreferences.Current.UiScale);
+Pump(500);
+Check("File edits update scale and the settings selector without restart", customScale.Value == 160
+    && Math.Abs(PhysicalScale(lyricRoot, window) - 1.6) < .01);
+scaleMode.SelectedIndex = 0; Pump(350);
+Check("Follow system removes the manual override immediately", UserConfiguration.LoadAppearance().UiScale == null
+    && Math.Abs(PhysicalScale(lyricRoot, window) - window.RenderScaling) < .01);
+foreach (var invalidScale in new[] { 0, .5, 3.01, double.NaN, double.PositiveInfinity })
+{
+    var rejected = false;
+    try { UserConfiguration.SaveAppearance(AppearancePreferences.Current with { UiScale = invalidScale }); }
+    catch (ArgumentException) { rejected = true; }
+    Check($"Invalid UI scale {invalidScale} is rejected", rejected);
+}
+
 Console.WriteLine("Verified native render scale: " + window.RenderScaling);
 window.Hide();
 vm.Dispose(); window.Hide(); settings.Close(); reloaded.Close(); Pump(400); Directory.Delete(config, true);

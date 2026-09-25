@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
-  <ItemGroup><Compile Include="../../src/OmniLyrics.Gui/Utils/HyprlandBackdrop.cs" Link="HyprlandBackdrop.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../src/OmniLyrics.Gui/Utils/HyprlandBackdrop.cs" Link="HyprlandBackdrop.cs" /><Compile Include="../../src/OmniLyrics.Gui/Utils/HyprlandScaleSnapshot.cs" Link="HyprlandScaleSnapshot.cs" /></ItemGroup>
 </Project>

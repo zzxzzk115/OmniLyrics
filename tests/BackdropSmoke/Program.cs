@@ -42,4 +42,18 @@ backdrop.Apply(true, title); await backdrop.Pending;
 Check("Invalid window addresses cannot become commands", commands.Count == 1);
 commands.Clear(); backdrop.Dispose(); backdrop.Apply(false, title); await backdrop.Pending;
 Check("A closed window never sends further commands", commands.Count == 0);
-Console.WriteLine("7 backdrop checks passed");
+var monitors = "[{\"id\":0,\"scale\":1.6666667},{\"id\":1,\"scale\":2}]";
+var scaleClients = JsonSerializer.Serialize(new[] {
+    new { pid = Environment.ProcessId, title, monitor = 0, xwayland = true },
+    new { pid = Environment.ProcessId + 1, title = "Unrelated", monitor = 1, xwayland = true }
+});
+var snapshot = HyprlandScaleSnapshot.Parse(monitors, scaleClients, "{\"bool\":true}", Environment.ProcessId);
+Check("Follow-system uses compositor scale instead of stale Xft DPI", Math.Abs(snapshot.Factor(title, 2, null)!.Value * 2 - 1.6666667) < .00001);
+Check("Absolute manual scaling does not multiply system DPI", snapshot.Factor(title, 2, 1.5) == .75);
+Check("Unrelated windows cannot select this application's monitor", snapshot.Factor("Unrelated", 2, null) == null);
+var composited = HyprlandScaleSnapshot.Parse(monitors, scaleClients, "{\"int\":0}", Environment.ProcessId);
+Check("Compositor-scaled XWayland does not scale twice", Math.Abs(composited.Factor(title, 2, null)!.Value - .5) < .00001);
+Check("Manual override accounts for compositor-side scaling", Math.Abs(composited.Factor(title, 2, 1.5)!.Value * 2 * 1.6666667 - 1.5) < .00001);
+var moved = HyprlandScaleSnapshot.Parse(monitors, scaleClients.Replace("\"monitor\":0", "\"monitor\":1"), "{\"bool\":true}", Environment.ProcessId);
+Check("Moving to another monitor picks up its scaling", moved.Factor(title, 2, null) == 1);
+Console.WriteLine("13 backdrop and monitor checks passed");

@@ -14,6 +14,7 @@ namespace OmniLyrics.Gui;
 
 public partial class MainWindow : Window
 {
+    private readonly WindowScale _windowScale;
     private bool _hovered;
     private string? _appliedPreset;
     private Size? _pendingPresetSize;
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
     public MainWindow(LyricsViewModel viewModel)
     {
         InitializeComponent();
+        _windowScale = new WindowScale(this, size => ClientSize = size);
         foreach (var button in this.GetLogicalDescendants().OfType<Button>())
             button.PropertyChanged += (_, e) =>
             {
@@ -49,8 +51,9 @@ public partial class MainWindow : Window
         Opened += (_, _) => ApplyBackdrop(force: true);
         PropertyChanged += (_, e) =>
         {
+            if (e.Property == IsVisibleProperty && IsVisible) ApplyBackdrop(force: true);
             if (e.Property == ActualTransparencyLevelProperty)
-                _windowsBackdrop.Apply(this, AppearancePreferences.Current.UseBlur, AppearancePreferences.Current.ThemeMode == "dark");
+                ApplyWindowsBackdrop();
         };
         Closing += (s, e) =>
         {
@@ -83,9 +86,8 @@ public partial class MainWindow : Window
         var resize = _appliedPreset != settings.Preset;
         // Clear the preceding reading layout's constraints before shrinking
         // into a floating preset. Apply both native dimensions together below.
-        MinWidth = 380;
-        MinHeight = reading ? 440 : (settings.Preset == "compact" ? 50 + settings.FontSize * 1.5 : 80 + settings.FontSize * 2.3)
-            + (settings.ShowTranslation ? settings.TranslationFontSize * 1.5 : 0);
+        _windowScale.SetMinimum(new Size(380, reading ? 440 : (settings.Preset == "compact" ? 50 + settings.FontSize * 1.5 : 80 + settings.FontSize * 2.3)
+            + (settings.ShowTranslation ? settings.TranslationFontSize * 1.5 : 0)));
         CanResize = true;
         PrimaryLyric.FontSize = ReadingLyric.FontSize = settings.FontSize;
         PrimaryLyric.Height = settings.FontSize * 1.5;
@@ -139,20 +141,13 @@ public partial class MainWindow : Window
             // restored geometry would overwrite a resize sent before it finishes.
             // While entering fullscreen, let the window manager choose the size:
             // a following normal-size request can cancel fullscreen on X11.
-            if (!leavingFullscreen && !fullscreen) SetPresetSize(size, true);
+            if (!leavingFullscreen && !fullscreen) _windowScale.SetSize(size);
             WindowState = fullscreen ? WindowState.FullScreen : WindowState.Normal;
         }
-        ApplyResponsiveLayout(new Size(Bounds.Width > 0 ? Bounds.Width : Width, Bounds.Height > 0 ? Bounds.Height : Height));
+        ApplyResponsiveLayout(_windowScale.ToContentSize(new Size(Bounds.Width > 0 ? Bounds.Width : Width, Bounds.Height > 0 ? Bounds.Height : Height)));
         ApplyBackdrop();
         UpdateOverlay();
         UpdateLockAction();
-    }
-
-    private void SetPresetSize(Size size, bool resizeClient)
-    {
-        Width = size.Width;
-        Height = size.Height;
-        if (IsVisible && resizeClient) ClientSize = size;
     }
 
     protected override void OnResized(WindowResizedEventArgs e)
@@ -163,7 +158,7 @@ public partial class MainWindow : Window
         {
             if (_pendingPresetSize != size || WindowState != WindowState.Normal) return;
             _pendingPresetSize = null;
-            SetPresetSize(size, true);
+            _windowScale.SetSize(size);
         }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
@@ -223,8 +218,17 @@ public partial class MainWindow : Window
         TransparencyLevelHint = settings.UseBlur
             ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
             : [WindowTransparencyLevel.Transparent];
-        _windowsBackdrop.Apply(this, settings.UseBlur, settings.ThemeMode == "dark");
+        ApplyWindowsBackdrop();
         if (IsVisible) _hyprlandBackdrop.Apply(settings.UseBlur, Title ?? "", force);
+    }
+
+    private void ApplyWindowsBackdrop()
+    {
+        var settings = AppearancePreferences.Current;
+        var blur = _windowsBackdrop.Apply(this, settings.UseBlur, settings.ThemeMode == "dark");
+        // If the framework reports None, its opaque fallback would cover the
+        // independently enabled DWM backdrop. Keep our tint on RootBorder only.
+        TransparencyBackgroundFallback = blur ? Brushes.Transparent : Brush.Parse(settings.BackgroundColor);
     }
 
     private void LockButton_Click(object? sender, RoutedEventArgs e)

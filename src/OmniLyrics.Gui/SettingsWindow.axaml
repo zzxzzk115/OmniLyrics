@@ -224,7 +224,7 @@
                         <StackPanel Margin="0,64,0,0"/>
                     </ItemsPanelTemplate>
                 </TabControl.ItemsPanel>
-                <TabItem x:Name="GeneralTab" Tag="General Language SystemLanguage">
+                <TabItem x:Name="GeneralTab" Tag="General Language SystemLanguage UiScale SystemScale CustomScale DPI HiDPI 缩放">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <PathIcon Classes="navIcon" Width="17" Height="17" Data="M3 4h18v2H3zm0 7h18v2H3zm0 7h18v2H3zM7 2h3v6H7zm8 7h3v6h-3zm-9 7h3v6H6z"/>
@@ -243,6 +243,27 @@
                                             <ComboBoxItem Content="English"/>
                                         </ComboBox>
                                     </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="16" Margin="0,14">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{DynamicResource UiScale}" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="UiScaleMode" Grid.Column="1" Width="180" SelectionChanged="UiScaleMode_SelectionChanged">
+                                            <ComboBoxItem Content="{DynamicResource SystemScale}"/>
+                                            <ComboBoxItem Content="100%"/>
+                                            <ComboBoxItem Content="125%"/>
+                                            <ComboBoxItem Content="150%"/>
+                                            <ComboBoxItem Content="175%"/>
+                                            <ComboBoxItem Content="200%"/>
+                                            <ComboBoxItem Content="{DynamicResource CustomScale}"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid x:Name="CustomScaleRow" ColumnDefinitions="*,Auto" IsVisible="False">
+                                        <TextBlock Text="{DynamicResource UiScalePercent}" VerticalAlignment="Center"/>
+                                        <NumericUpDown x:Name="CustomUiScale" Grid.Column="1" Width="144" Minimum="75" Maximum="300" Increment="5" FormatString="0.##" Value="100" ValueChanged="CustomUiScale_ValueChanged"/>
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource UiScaleHint}" Classes="hint"/>
                                 </StackPanel>
                             </Border>
 
