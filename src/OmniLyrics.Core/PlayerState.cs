@@ -12,6 +12,7 @@ public class PlayerState
     public TimeSpan Duration { get; set; }
     public bool Playing { get; set; }
     public string? SourceApp { get; set; }
+    public string? PlayerName { get; set; }
     public string? ArtworkUrl { get; set; }
     public int ArtworkWidth { get; set; }
     public int ArtworkHeight { get; set; }
@@ -27,6 +28,7 @@ public class PlayerState
         Duration = Duration,
         Playing = Playing,
         SourceApp = SourceApp,
+        PlayerName = PlayerName,
         ArtworkUrl = ArtworkUrl,
         ArtworkWidth = ArtworkWidth,
         ArtworkHeight = ArtworkHeight,

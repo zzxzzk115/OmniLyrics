@@ -2,6 +2,19 @@
 
 namespace OmniLyrics.Backends.Linux;
 
+[DBusInterface("org.mpris.MediaPlayer2.TrackList")]
+public interface IPlayerTrackList : IDBusObject
+{
+    Task<T> GetAsync<T>(string prop);
+    Task<IDictionary<string, object>[]> GetTracksMetadataAsync(ObjectPath[] trackIds);
+}
+
+[DBusInterface("org.mpris.MediaPlayer2")]
+public interface IPlayerApplication : IDBusObject
+{
+    Task<T> GetAsync<T>(string prop);
+}
+
 [DBusInterface("org.mpris.MediaPlayer2.Player")]
 public interface IPlayer : IDBusObject
 {
@@ -11,7 +24,7 @@ public interface IPlayer : IDBusObject
     Task NextAsync();
     Task PreviousAsync();
     Task SeekAsync(long microseconds);
-    Task SetPositionAsync(string trackId, long position);
+    Task SetPositionAsync(ObjectPath trackId, long position);
 
     Task<T> GetAsync<T>(string prop);
     Task<IDisposable> WatchPropertiesAsync(Action<PropertyChanges> handler);

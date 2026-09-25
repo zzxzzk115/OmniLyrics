@@ -1,0 +1,214 @@
+--- a/modules/ii/bar/BarContent.qml
++++ b/modules/ii/bar/BarContent.qml
+@@ -17,6 +17,8 @@
+     property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
+     readonly property int centerSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
+ 
++    readonly property int extraMusicWidth: Config.options.bar.verbose && useShortenedForm === 0 ? 140 : 0
++
+     component VerticalBarSeparator: Rectangle {
+         Layout.topMargin: Appearance.sizes.baseBarHeight / 3
+         Layout.bottomMargin: Appearance.sizes.baseBarHeight / 3
+@@ -105,13 +107,14 @@
+             top: parent.top
+             bottom: parent.bottom
+             horizontalCenter: parent.horizontalCenter
++            horizontalCenterOffset: -root.extraMusicWidth / 2
+         }
+         spacing: 4
+ 
+         BarGroup {
+             id: leftCenterGroup
+             anchors.verticalCenter: parent.verticalCenter
+-            implicitWidth: root.centerSideModuleWidth
++            implicitWidth: root.centerSideModuleWidth + root.extraMusicWidth
+ 
+             Resources {
+                 alwaysShowAllResources: root.useShortenedForm === 2
+--- a/modules/ii/bar/Media.qml
++++ b/modules/ii/bar/Media.qml
+@@ -14,6 +14,8 @@
+     property bool borderless: Config.options.bar.borderless
+     readonly property MprisPlayer activePlayer: MprisController.activePlayer
+     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
++
++    readonly property string currentLyric: OmniLyrics.currentFor(activePlayer)
+ 
+     Layout.fillHeight: true
+     implicitWidth: rowLayout.implicitWidth + rowLayout.spacing * 2
+@@ -72,16 +74,36 @@
+             }
+         }
+ 
+-        StyledText {
++        ColumnLayout {
+             visible: Config.options.bar.verbose
+-            width: rowLayout.width - (CircularProgress.size + rowLayout.spacing * 2)
+             Layout.alignment: Qt.AlignVCenter
+-            Layout.fillWidth: true // Ensures the text takes up available space
++            Layout.fillWidth: true
++            Layout.minimumWidth: 0
+             Layout.rightMargin: rowLayout.spacing
+-            horizontalAlignment: Text.AlignHCenter
+-            elide: Text.ElideRight // Truncates the text on the right
+-            color: Appearance.colors.colOnLayer1
+-            text: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
++            spacing: 0
++
++            StyledText {
++                Layout.fillWidth: true
++                Layout.minimumWidth: 0
++                horizontalAlignment: Text.AlignHCenter
++                elide: Text.ElideRight
++                textFormat: Text.PlainText
++                font.pixelSize: root.currentLyric ? Appearance.font.pixelSize.smaller : Appearance.font.pixelSize.small
++                color: root.currentLyric ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer1
++                text: `${root.cleanedTitle}${root.activePlayer?.trackArtist ? ' • ' + root.activePlayer.trackArtist : ''}`
++            }
++            StyledText {
++                visible: root.currentLyric.length > 0
++                Layout.fillWidth: true
++                Layout.minimumWidth: 0
++                horizontalAlignment: Text.AlignHCenter
++                elide: Text.ElideRight
++                textFormat: Text.PlainText
++                font.pixelSize: Appearance.font.pixelSize.smaller
++                font.weight: Font.Medium
++                color: Appearance.colors.colPrimary
++                text: root.currentLyric
++            }
+         }
+ 
+     }
+--- a/modules/ii/mediaControls/PlayerControl.qml
++++ b/modules/ii/mediaControls/PlayerControl.qml
+@@ -25,6 +25,8 @@
+     property real maxVisualizerValue: 1000 // Max value in the data points
+     property int visualizerSmoothing: 2 // Number of points to average for smoothing
+     property real radius
++    readonly property string currentLyric: OmniLyrics.currentFor(player)
++    readonly property string nextLyric: OmniLyrics.nextFor(player)
+ 
+     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
+ 
+@@ -147,6 +149,7 @@
+         RowLayout {
+             anchors.fill: parent
+             anchors.margins: 13
++            anchors.bottomMargin: 68
+             spacing: 15
+ 
+             Rectangle { // Art background
+@@ -278,6 +281,36 @@
+                     }
+ 
+                     RippleButton {
++                        id: favoriteButton
++                        visible: CiderFavorites.isCider(root.player)
++                        enabled: CiderFavorites.matches(root.player) && !CiderFavorites.busy
++                        anchors.right: playPauseButton.left
++                        anchors.rightMargin: 8
++                        anchors.verticalCenter: playPauseButton.verticalCenter
++                        implicitWidth: 36
++                        implicitHeight: 36
++                        buttonRadius: 18
++                        downAction: () => CiderFavorites.toggle(root.player)
++                        colBackground: "transparent"
++                        colBackgroundHover: blendedColors.colSecondaryContainerHover
++                        colRipple: blendedColors.colSecondaryContainerActive
++                        Accessible.name: CiderFavorites.label(root.player)
++
++                        contentItem: MaterialSymbol {
++                            text: CiderFavorites.busy ? "hourglass_top" : "star"
++                            fill: CiderFavorites.isFavorite(root.player) ? 1 : 0
++                            iconSize: 24
++                            horizontalAlignment: Text.AlignHCenter
++                            verticalAlignment: Text.AlignVCenter
++                            color: CiderFavorites.isFavorite(root.player)
++                                ? blendedColors.colPrimary : blendedColors.colOnSecondaryContainer
++                        }
++                        StyledToolTip {
++                            text: CiderFavorites.label(root.player)
++                        }
++                    }
++
++                    RippleButton {
+                         id: playPauseButton
+                         anchors.right: parent.right
+                         anchors.bottom: sliderRow.top
+@@ -307,5 +340,34 @@
+                 }
+             }
+         }
++        Column {
++            anchors.left: parent.left
++            anchors.right: parent.right
++            anchors.bottom: parent.bottom
++            anchors.margins: 13
++            height: 42
++            spacing: 3
++
++            StyledText {
++                width: parent.width
++                text: root.currentLyric || OmniLyrics.placeholderFor(root.player)
++                textFormat: Text.PlainText
++                font.pixelSize: Appearance.font.pixelSize.normal
++                font.weight: Font.Medium
++                color: root.currentLyric ? blendedColors.colPrimary : blendedColors.colSubtext
++                elide: Text.ElideRight
++                horizontalAlignment: Text.AlignHCenter
++            }
++            StyledText {
++                width: parent.width
++                text: root.nextLyric
++                textFormat: Text.PlainText
++                font.pixelSize: Appearance.font.pixelSize.smaller
++                color: blendedColors.colSubtext
++                elide: Text.ElideRight
++                horizontalAlignment: Text.AlignHCenter
++            }
++        }
++
+     }
+ }
+--- a/modules/ii/mediaControls/MediaControls.qml
++++ b/modules/ii/mediaControls/MediaControls.qml
+@@ -19,7 +19,7 @@
+     readonly property var realPlayers: MprisController.players
+     readonly property var meaningfulPlayers: filterDuplicatePlayers(realPlayers)
+     readonly property real osdWidth: Appearance.sizes.osdWidth
+-    readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
++    readonly property real widgetWidth: Math.max(Appearance.sizes.mediaControlsWidth, 560)
+     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
+     property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
+     property list<real> visualizerPoints: []
+@@ -135,7 +135,7 @@
+                         player: modelData
+                         visualizerPoints: root.visualizerPoints
+                         implicitWidth: root.widgetWidth
+-                        implicitHeight: root.widgetHeight
++                        implicitHeight: root.widgetHeight + 56
+                         radius: root.popupRounding
+                     }
+                 }
+@@ -192,17 +192,17 @@
+         target: "mediaControls"
+ 
+         function toggle(): void {
+-            mediaControlsLoader.active = !mediaControlsLoader.active;
++            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
+             if (mediaControlsLoader.active)
+                 Notifications.timeoutAll();
+         }
+ 
+         function close(): void {
+-            mediaControlsLoader.active = false;
++            GlobalStates.mediaControlsOpen = false;
+         }
+ 
+         function open(): void {
+-            mediaControlsLoader.active = true;
++            GlobalStates.mediaControlsOpen = true;
+             Notifications.timeoutAll();
+         }
+     }

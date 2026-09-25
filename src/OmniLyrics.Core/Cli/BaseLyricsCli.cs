@@ -1,4 +1,4 @@
-﻿using OmniLyrics.Core.Lyrics.Models;
+using OmniLyrics.Core.Lyrics.Models;
 using OmniLyrics.Core.Shared;
 
 namespace OmniLyrics.Core.Cli;
@@ -14,23 +14,24 @@ public abstract class BaseLyricsCli : ILyricsProvider
     protected static readonly SemaphoreSlim ConsoleLock = new(1, 1);
 
     protected readonly IPlayerBackend Backend;
-    protected readonly LyricsManager LyricsManager = new();
+    protected readonly LyricsManager LyricsManager;
+    public LyricsManager SharedLyricsManager => LyricsManager;
 
     protected int LastCenterIndex = -999;
+    protected long LastLyricsRevision = -1;
     protected string LastSongId = "";
 
-    protected BaseLyricsCli(IPlayerBackend backend)
+    protected BaseLyricsCli(IPlayerBackend backend, LyricsManager? lyrics = null)
     {
         Backend = backend;
+        LyricsManager = lyrics ?? (backend is SharedPlayerSession session ? session.Lyrics : new());
 
-        // Receive backend events (async lyrics load)
-        Backend.OnStateChanged += async (_, state) =>
-        {
-            await HandleBackendStateChangedAsync(state);
-        };
     }
 
-    List<LyricsLine>? ILyricsProvider.CurrentLyrics => LyricsManager.Current;
+    protected (List<LyricsLine>? Lines, bool Loading, long Revision) CaptureLyrics(PlayerState? state) =>
+        Backend is SharedPlayerSession session ? session.CaptureLyrics(state) : LyricsManager.Capture(state);
+
+    List<LyricsLine>? ILyricsProvider.CurrentLyrics => CaptureLyrics(Backend.GetCurrentState()).Lines;
 
     /// <summary>
     ///     Start backend and refresh UI repeatedly.
@@ -38,70 +39,34 @@ public abstract class BaseLyricsCli : ILyricsProvider
     public async Task RunAsync(CancellationToken token)
     {
         await Backend.StartAsync(token);
+        using var prefetch = new LyricsPrefetcher(Backend, LyricsManager, token, () => Backend is not SharedPlayerSession);
+        long nextUpdate = 0;
 
         while (!token.IsCancellationRequested)
         {
+            if (Environment.TickCount64 >= nextUpdate)
+            {
+                nextUpdate = Environment.TickCount64 + 250;
+                Localization.Refresh();
+                if (Backend is not SharedPlayerSession) _ = LyricsManager.UpdateAsync(Backend.GetCurrentState(), true);
+            }
             RenderLyricsFrame();
-            await Task.Delay(10);
+            await Task.Delay(10, token);
         }
     }
 
-    /// <summary>
-    ///     Handle new song detection and async lyrics load.
-    /// </summary>
-    private async Task HandleBackendStateChangedAsync(PlayerState? state)
+    private string? _emptyFrame;
+    protected bool RenderEmptyFrame(PlayerState? state, (List<LyricsLine>? Lines, bool Loading, long Revision) snapshot, bool singleLine = false)
     {
-        if (state is null)
-            return;
-
-        string normTitle = (state.Title ?? "").Trim().ToLowerInvariant();
-        string normArtist = (state.Artists.FirstOrDefault() ?? "").Trim().ToLowerInvariant();
-
-        if (string.IsNullOrEmpty(normTitle) || string.IsNullOrEmpty(normArtist))
-            return;
-
-        string songId = $"{state.SourceApp}|{normTitle}|{normArtist}";
-
-        if (songId == LastSongId)
-            return;
-
-        LastSongId = songId;
-        LastCenterIndex = -999;
-
-        string artistText = state.Artists.Count > 0
-            ? string.Join(", ", state.Artists)
-            : "Unknown Artist";
-
-        // UI: show searching placeholder
-        await RedrawScreenAsync(
-            "Now Playing:",
-            $"{artistText} - {state.Title}",
-            "Searching lyrics...",
-            null
-        );
-
-        // Load from shared manager (cache-aware)
-        await LyricsManager.UpdateAsync(state, false);
-
-        var lines = LyricsManager.Current;
-        if (lines == null)
-        {
-            await RedrawScreenAsync(
-                "Now Playing:",
-                $"{artistText} - {state.Title}",
-                "(No lyrics found)",
-                null
-            );
-        }
-        else
-        {
-            await RedrawScreenAsync(
-                "Now Playing:",
-                $"{artistText} - {state.Title}",
-                "",
-                null
-            );
-        }
+        if (snapshot.Lines is { Count: > 0 }) { _emptyFrame = null; return false; }
+        var title = state == null ? Localization.Get("Waiting") : $"{string.Join(", ", state.Artists)} - {state.Title}";
+        var message = state == null ? "" : Localization.Get(snapshot.Loading ? "SearchingLyrics" : "NoLyrics");
+        var key = title + "|" + message;
+        if (_emptyFrame == key) return true;
+        _emptyFrame = key; LastCenterIndex = -999; LastLyricsRevision = -1;
+        if (singleLine) RenderSingleLine(title + (message.Length > 0 ? " · " + message : ""));
+        else _ = RedrawScreenAsync(Localization.Text("Now Playing:"), title, message, null);
+        return true;
     }
 
     /// <summary>
@@ -110,16 +75,19 @@ public abstract class BaseLyricsCli : ILyricsProvider
     protected virtual void RenderLyricsFrame()
     {
         var state = Backend.GetCurrentState();
-        var cur = LyricsManager.Current;
-        if (state == null || cur == null || cur.Count == 0)
-            return;
+        var snapshot = CaptureLyrics(state);
+        var cur = snapshot.Lines;
+        if (RenderEmptyFrame(state, snapshot) || state == null || cur == null) return;
 
         int idx = cur.FindLastIndex(l => l.Timestamp <= state.Position);
 
-        if (idx < 0 || idx == LastCenterIndex)
+        var track = LyricsCache.TrackKey(state);
+        if (idx == LastCenterIndex && snapshot.Revision == LastLyricsRevision && LastSongId == track)
             return;
 
+        LastSongId = track;
         LastCenterIndex = idx;
+        LastLyricsRevision = snapshot.Revision;
 
         const int N = 6;
         int start = Math.Max(0, idx - 3);
@@ -135,10 +103,10 @@ public abstract class BaseLyricsCli : ILyricsProvider
 
         string artistText = state.Artists.Count > 0
             ? string.Join(", ", state.Artists)
-            : "Unknown Artist";
+            : Localization.Text("Unknown Artist");
 
         _ = RedrawScreenAsync(
-            "Now Playing:",
+            Localization.Text("Now Playing:"),
             $"{artistText} - {state.Title}",
             "",
             lines
