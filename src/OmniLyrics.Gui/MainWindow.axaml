@@ -4,6 +4,7 @@
         xmlns:controls="clr-namespace:OmniLyrics.Gui.Controls"
         x:Class="OmniLyrics.Gui.MainWindow"
         Title="OmniLyrics · Lyrics"
+        Icon="/Assets/app.ico"
         Width="800"
         Height="150"
         SystemDecorations="None"
@@ -61,7 +62,7 @@
                   Background="Transparent"
                   ZIndex="10" VerticalAlignment="Top"
                   RowDefinitions="Auto,Auto"
-                  IsVisible="False">
+                  Opacity="0" IsHitTestVisible="False" IsEnabled="False">
 
                 <!-- Title bar -->
                 <Grid>
@@ -71,7 +72,8 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True" Margin="0,0,12,0">
-                        <Image x:Name="AppLogo" Source="/Assets/logo.png" Width="22" Height="22"
+                        <Image x:Name="AppLogo" Source="/Assets/AppIcon.iconset/icon_32x32@2x.png" Width="22" Height="22"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
                                VerticalAlignment="Center" />
 
                         <controls:AlignedTextBlock x:Name="HeaderText"
@@ -119,19 +121,19 @@
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Click="PlayPauseButton_Click" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <Grid>
                             <PathIcon
                                 Height="12"
                                 Width="12"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource play_regular}" />
-                        </Button>
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                                Data="{StaticResource play_regular}" IsVisible="{Binding !Playing}" />
                             <PathIcon
                                 Height="12"
                                 Width="12"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource pause_regular}" />
+                                Data="{StaticResource pause_regular}" IsVisible="{Binding Playing}" />
+                            </Grid>
                         </Button>
 
                         <!-- Next Button -->
@@ -198,7 +200,7 @@
                     </Border>
                     <StackPanel x:Name="SongMetadata" Spacing="10">
                         <Grid x:Name="SongTitleRow" ColumnDefinitions="Auto,*">
-                            <Image x:Name="MetadataLogo" Source="/Assets/logo.png" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <Image x:Name="MetadataLogo" Source="/Assets/AppIcon.iconset/icon_32x32@2x.png" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality" />
                             <controls:AlignedTextBlock Grid.Column="1" Text="{Binding Title}" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource LyricPrimary}"
                                        TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                         </Grid>
@@ -227,19 +229,19 @@
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <Grid>
                             <PathIcon
                                 Height="18"
                                 Width="18"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource play_regular}" />
-                        </Button>
-                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                                Data="{StaticResource play_regular}" IsVisible="{Binding !Playing}" />
                             <PathIcon
                                 Height="18"
                                 Width="18"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource pause_regular}" />
+                                Data="{StaticResource pause_regular}" IsVisible="{Binding Playing}" />
+                            </Grid>
                         </Button>
 
                         <!-- Next Button -->

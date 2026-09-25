@@ -30,6 +30,7 @@ public class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        MacApplicationIcon.Apply();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             if (System.Array.IndexOf(desktop.Args ?? [], "--settings") >= 0)

@@ -6,7 +6,9 @@ using Avalonia.Media;
 using OmniLyrics.Gui.Models;
 using OmniLyrics.Core;
 using Avalonia.VisualTree;
+using Avalonia.LogicalTree;
 using System.Linq;
+using OmniLyrics.Gui.Utils;
 
 namespace OmniLyrics.Gui;
 
@@ -16,23 +18,40 @@ public partial class MainWindow : Window
     private string? _appliedPreset;
     private Size? _pendingPresetSize;
     private WindowEdge? _resizeEdge;
+    private readonly WindowsBackdrop _windowsBackdrop = new();
+    private readonly HyprlandBackdrop _hyprlandBackdrop = new();
     public bool IsLocked => AppearancePreferences.Current.Locked;
     public MainWindow() : this(new LyricsViewModel()) { }
     public MainWindow(LyricsViewModel viewModel)
     {
         InitializeComponent();
-        // Desktop lyrics are a utility window. X11 tiling managers otherwise
-        // restore a full-screen overlay into a tile instead of its preset size.
-        if (System.OperatingSystem.IsLinux())
+        foreach (var button in this.GetLogicalDescendants().OfType<Button>())
+            button.PropertyChanged += (_, e) =>
+            {
+                // Let a captured press complete before hiding its toolbar. This also
+                // handles capture cancellation without leaving the toolbar pinned.
+                if (e.Property == Button.IsPressedProperty)
+                    Avalonia.Threading.Dispatcher.UIThread.Post(UpdateOverlay);
+            };
+        // Hyprland otherwise restores the overlay into a tile. Other window
+        // managers may disallow fullscreen for utility windows, so keep their
+        // ordinary window type.
+        if (System.OperatingSystem.IsLinux() && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("HYPRLAND_INSTANCE_SIGNATURE")))
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Utility);
         DataContext = viewModel;
-        TopBar.IsVisible = false; // Hidden until mouse hover
         AppearancePreferences.Changed += ApplyAppearance;
         Localization.Changed += RefreshLockAction;
         ApplyAppearance();
         RootBorder.Measuring = ApplyResponsiveLayout;
         Closed += (_, _) => AppearancePreferences.Changed -= ApplyAppearance;
         Closed += (_, _) => Localization.Changed -= RefreshLockAction;
+        Closed += (_, _) => _hyprlandBackdrop.Dispose();
+        Opened += (_, _) => ApplyBackdrop(force: true);
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ActualTransparencyLevelProperty)
+                _windowsBackdrop.Apply(this, AppearancePreferences.Current.UseBlur, AppearancePreferences.Current.ThemeMode == "dark");
+        };
         Closing += (s, e) =>
         {
             if (e.CloseReason is WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
@@ -116,12 +135,15 @@ public partial class MainWindow : Window
             };
             var leavingFullscreen = IsVisible && WindowState == WindowState.FullScreen && !fullscreen;
             _pendingPresetSize = leavingFullscreen ? size : null;
-            WindowState = fullscreen ? WindowState.FullScreen : WindowState.Normal;
             // Full-screen restoration is asynchronous: the window manager's
             // restored geometry would overwrite a resize sent before it finishes.
-            if (!leavingFullscreen) SetPresetSize(size, !fullscreen);
+            // While entering fullscreen, let the window manager choose the size:
+            // a following normal-size request can cancel fullscreen on X11.
+            if (!leavingFullscreen && !fullscreen) SetPresetSize(size, true);
+            WindowState = fullscreen ? WindowState.FullScreen : WindowState.Normal;
         }
         ApplyResponsiveLayout(new Size(Bounds.Width > 0 ? Bounds.Width : Width, Bounds.Height > 0 ? Bounds.Height : Height));
+        ApplyBackdrop();
         UpdateOverlay();
         UpdateLockAction();
     }
@@ -185,12 +207,24 @@ public partial class MainWindow : Window
 
     private void UpdateOverlay()
     {
-        TopBar.IsVisible = _hovered;
+        var show = _hovered || TopBar.GetVisualDescendants().OfType<Button>().Any(button => button.IsPressed);
+        // Keep the buttons arranged while hidden. Removing/reinserting them makes
+        // the compositor's hit-test scene lag behind fast pointer-entry clicks.
+        TopBar.Opacity = show ? 1 : 0;
+        TopBar.IsHitTestVisible = show;
+        TopBar.IsEnabled = show;
+    }
+
+    private void ApplyBackdrop(bool force = false)
+    {
         var settings = AppearancePreferences.Current;
         RootBorder.Background = new SolidColorBrush(Color.Parse(settings.BackgroundColor), settings.BackgroundOpacity);
+        TransparencyBackgroundFallback = new SolidColorBrush(Color.Parse(settings.BackgroundColor));
         TransparencyLevelHint = settings.UseBlur
-            ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent]
+            ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
             : [WindowTransparencyLevel.Transparent];
+        _windowsBackdrop.Apply(this, settings.UseBlur, settings.ThemeMode == "dark");
+        if (IsVisible) _hyprlandBackdrop.Apply(settings.UseBlur, Title ?? "", force);
     }
 
     private void LockButton_Click(object? sender, RoutedEventArgs e)
@@ -267,6 +301,8 @@ public partial class MainWindow : Window
     {
         base.OnPointerPressed(e);
 
+        if (e.Handled || IsButton(e.Source)) return;
+
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && ResizeEdgeAt(e.GetPosition(this)) is { } edge)
         {
             BeginResizeDrag(edge, e);
@@ -274,12 +310,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Source is Visual visual && (visual is Button || visual.GetVisualAncestors().Any(parent => parent is Button))) return;
-
         // Enable window dragging on left-button press
         if (!IsLocked && WindowState != WindowState.FullScreen && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             BeginMoveDrag(e);
     }
+
+    private static bool IsButton(object? source) => source is Visual visual
+        && (visual is Button || visual.GetVisualAncestors().Any(parent => parent is Button));
 
     private WindowEdge? ResizeEdgeAt(Point point)
     {
@@ -307,7 +344,7 @@ public partial class MainWindow : Window
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        var edge = ResizeEdgeAt(e.GetPosition(this));
+        var edge = IsButton(e.Source) ? null : ResizeEdgeAt(e.GetPosition(this));
         if (_resizeEdge == edge) return;
         _resizeEdge = edge;
         Cursor = new Cursor(edge switch

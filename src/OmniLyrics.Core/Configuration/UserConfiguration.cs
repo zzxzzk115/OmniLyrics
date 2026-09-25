@@ -12,7 +12,7 @@ public sealed record LyricsSettings(bool Prefetch, int PrefetchCount,
     string PreferredSource = "qq");
 public sealed record AppearanceSettings(string Preset, bool Locked, bool ShowLogo, bool ShowPlayerInfo,
     bool ApproximateHighlight = true, bool ShowTranslation = true, double FontSize = 32, double TranslationFontSize = 18,
-    string TextColor = "#BAC0CC", string HighlightColor = "#F3C879", string BackgroundColor = "#161A23", double BackgroundOpacity = .82,
+    string TextColor = "#BAC0CC", string HighlightColor = "#F3C879", string BackgroundColor = "#161A23", double BackgroundOpacity = .6,
     bool UseBlur = true, string ThemeMode = "dark", string AccentColor = "#FA586A");
 
 /// <summary>Shared by all frontends. Credentials are separate from ordinary settings.</summary>
@@ -56,7 +56,7 @@ public static class UserConfiguration
             appearance?["textColor"]?.GetValue<string>() ?? "#BAC0CC",
             appearance?["highlightColor"]?.GetValue<string>() ?? "#F3C879",
             appearance?["backgroundColor"]?.GetValue<string>() ?? "#161A23",
-            appearance?["backgroundOpacity"]?.GetValue<double>() ?? .82,
+            appearance?["backgroundOpacity"]?.GetValue<double>() ?? .6,
             appearance?["useBlur"]?.GetValue<bool>() ?? true,
             appearance?["themeMode"]?.GetValue<string>() ?? "dark",
             appearance?["accentColor"]?.GetValue<string>() ?? "#FA586A");

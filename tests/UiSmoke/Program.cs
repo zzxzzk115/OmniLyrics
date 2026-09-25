@@ -21,6 +21,30 @@ using OmniLyrics.Gui.Models;
 using OmniLyrics.Gui.Utils;
 using System.Text.Json.Nodes;
 
+// These tests repeatedly map windows and switch fullscreen. Never run them on
+// the user's Linux desktop: use a separate X server (for example Xvfb).
+if (OperatingSystem.IsLinux())
+{
+    var display = Environment.GetEnvironmentVariable("OMNILYRICS_UI_TEST_DISPLAY");
+    var server = Environment.GetEnvironmentVariable("OMNILYRICS_UI_TEST_XSERVER_PID");
+    var isolated = false;
+    if (int.TryParse(server, out var serverPid))
+    {
+        try
+        {
+            isolated = File.ReadAllText($"/proc/{serverPid}/comm").Trim() == "Xvfb"
+                && File.ReadAllText($"/proc/{serverPid}/cmdline").Split('\0').Contains(display);
+        }
+        catch (IOException) { }
+    }
+    if (string.IsNullOrWhiteSpace(display) || display != Environment.GetEnvironmentVariable("DISPLAY") || !isolated)
+    {
+        Console.Error.WriteLine("UI tests require a verified virtual X server. Run: bash tests/run-ui-smoke.sh");
+        Environment.ExitCode = 2;
+        return;
+    }
+}
+
 var config = Path.Combine(Path.GetTempPath(), "omnilyrics-ui-" + Guid.NewGuid().ToString("N"));
 Environment.SetEnvironmentVariable("OMNILYRICS_CONFIG_DIR", config);
 Environment.SetEnvironmentVariable("OMNILYRICS_LANGUAGE", null);
@@ -55,7 +79,7 @@ void Resize(Window window, double width, double height)
 }
 void Click(SettingsWindow settings, string key) => settings.GetLogicalDescendants().OfType<Button>().Distinct()
     .Single(button => button.Content?.ToString() == Localization.Get(key)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-void PointerClick(Window host, Control target, Point? offset = null)
+void PointerClick(Window host, Control target, Point? offset = null, Action? beforeRelease = null)
 {
     var point = target.TranslatePoint(offset ?? new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), host)!.Value;
     var hit = host.InputHitTest(point) as Interactive ?? throw new Exception("No input target at " + point);
@@ -63,13 +87,14 @@ void PointerClick(Window host, Control target, Point? offset = null)
     using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
     hit.RaiseEvent(new PointerPressedEventArgs(hit, pointer, host, point, 0,
         new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None));
+    beforeRelease?.Invoke();
     (pointer.Captured as Interactive ?? hit).RaiseEvent(new PointerReleasedEventArgs(hit, pointer, host, point, 1,
         new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
     Pump();
 }
 void Capture(Window window, string name)
 {
-    if (window is MainWindow main) main.FindControl<Control>("TopBar")!.IsVisible = true;
+    if (window is MainWindow main) main.FindControl<Control>("TopBar")!.Opacity = 1;
     var root = (Control)window.Content!;
     var size = window.IsVisible ? window.ClientSize : new Size(window.Width, window.Height);
     if (window.IsVisible) window.UpdateLayout();
@@ -86,6 +111,7 @@ void Capture(Window window, string name)
     Directory.CreateDirectory(folder); bitmap.Save(Path.Combine(folder, name + ".png"));
 }
 Check("Fresh preferences enable simulated highlighting", UserConfiguration.LoadAppearance().ApproximateHighlight);
+Check("Fresh preferences use a 60 percent background", UserConfiguration.LoadAppearance().BackgroundOpacity == .6);
 AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().SetupWithoutStarting();
 Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
 var fake = new DemoBackend();
@@ -96,8 +122,11 @@ var lines = words.Select((text, i) => new LyricsLine(TimeSpan.FromSeconds(i * 8)
     new() { ["zh"] = translations[i] }, TimeSpan.FromSeconds(i * 8 + 7))).ToList();
 var manager = new LyricsManager((_, _) => Task.FromResult<List<LyricsLine>?>(lines));
 manager.UpdateAsync(fake.State, true).GetAwaiter().GetResult();
+fake.Available = false;
 using var vm = new LyricsViewModel(new DesktopSession(() => fake, () => new Uri("http://127.0.0.1:1/")), manager);
 var window = new MainWindow(vm);
+Check("No player starts with a localized message", vm.CurrentLine.Text == "No song is playing");
+fake.Available = true;
 Check("Floating lyric buttons have no tooltips and keep accessible names",
     window.GetLogicalDescendants().OfType<Button>().All(button => ToolTip.GetTip(button) == null
         && !string.IsNullOrEmpty(Avalonia.Automation.AutomationProperties.GetName(button))));
@@ -122,6 +151,23 @@ Until(() => vm.Title == "Unsupported player"); Pump(250);
 Check("Unsupported connection hides the favorite action", !vm.FavoriteAvailable);
 fake.State.Title = "Morning Light"; fake.SupportsFavorites = true;
 Until(() => vm.Title == "Morning Light");
+fake.Available = false;
+Until(() => vm.CurrentLine.Text == "No song is playing");
+Check("Disconnect clears the previous song, translation and favorite", vm.Title == null && vm.Translation == null
+    && !vm.FavoriteAvailable && vm.SecondaryLine.Text == "" && vm.Progress == 0);
+UserConfiguration.SaveLanguage("zh-CN"); Localization.Reload();
+Until(() => vm.CurrentLine.Text == "没有正在播放的歌曲");
+foreach (var preset in new[] { "classic", "compact", "focus", "portrait", "fullscreen" })
+{
+    AppearancePreferences.Save(new(preset, false, true, true)); Pump();
+    var name = preset is "classic" or "compact" ? "PrimaryLyric" : "ReadingLyric";
+    Check(preset + " shows the localized idle message", window.FindControl<KaraokeLine>(name)!.Line?.Text == "没有正在播放的歌曲");
+}
+UserConfiguration.SaveLanguage("en"); Localization.Reload();
+Until(() => vm.CurrentLine.Text == "No song is playing");
+fake.Available = true;
+Until(() => vm.CurrentLine.Text == words[3]);
+Check("Paused music keeps its lyrics", !vm.Playing && vm.CurrentLine.Text == words[3]);
 foreach (var preset in new[] { "classic", "compact", "focus", "portrait", "fullscreen" })
 {
     AppearancePreferences.Save(new(preset, false, true, true)); Pump();
@@ -148,7 +194,7 @@ using (var hover = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true)
     var root = window.FindControl<Control>("RootBorder")!;
     root.RaiseEvent(new PointerEventArgs(InputElement.PointerEnteredEvent, root, hover, window, new Point(50, 50), 0, PointerPointProperties.None, KeyModifiers.None));
 }
-Check("Position lock leaves the toolbar and unlock action available", window.FindControl<Control>("TopBar")!.IsVisible
+Check("Position lock leaves the toolbar and unlock action available", window.FindControl<Control>("TopBar")!.IsHitTestVisible
     && Avalonia.Automation.AutomationProperties.GetName(window.FindControl<Button>("LockAction")!) == Localization.Get("UnlockWindow"));
 Until(() => !vm.HasTranslation);
 Check("Typography, colors and translation option apply", window.FindControl<KaraokeLine>("ReadingLyric")!.FontSize == 40 && !vm.HasTranslation
@@ -282,7 +328,7 @@ Check("A new settings window restores saved typography", reloaded.FindControl<Nu
 Check("Settings has a logo, search icon and fixed Apply action without a config path",
     settings.FindControl<Control>("SettingsLogo") != null && settings.FindControl<Control>("SearchIcon") != null
     && settings.FindControl<Button>("ApplyButton") != null && settings.FindControl<Control>("LocationText") == null);
-Check("About uses the project's 0.4.0 build version", ApplicationInfo.Version == "0.4.0"
+Check("About uses the project's build version", ApplicationInfo.Version == typeof(App).Assembly.GetName().Version!.ToString(3)
     && settings.FindControl<TextBlock>("VersionText")!.Text!.Contains(ApplicationInfo.Version));
 
 var external = JsonNode.Parse(UserConfiguration.ReadConfigurationText())!;
@@ -437,6 +483,45 @@ foreach (var (preset, width, height) in new[] { ("focus", 1040d, 580d), ("focus"
         edge.X <= layout.Bounds.Width + 1 && edge.Y <= layout.Bounds.Height + 1);
     Capture(window, "complete-" + preset + "-" + width);
 }
+foreach (var preset in new[] { "classic", "compact", "focus", "portrait", "fullscreen" })
+{
+    AppearancePreferences.Save(new(preset, false, true, true)); window.Show(); Pump(350);
+    var root = window.FindControl<Control>("RootBorder")!;
+    using var hover = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+    root.RaiseEvent(new PointerEventArgs(InputElement.PointerEnteredEvent, root, hover, window, new Point(50, 50), 0, PointerPointProperties.None, KeyModifiers.None));
+    Button ActionButton(string key) => window.GetLogicalDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible
+        && Avalonia.Automation.AutomationProperties.GetName(b) == Localization.Get(key));
+    var play = ActionButton("PlayPause");
+    var toggles = fake.Toggles;
+    PointerClick(window, play, beforeRelease: () =>
+    {
+        fake.State.Playing = true;
+        Until(() => vm.Playing);
+    });
+    Check(preset + " playback click survives a state refresh between press and release", fake.Toggles == toggles + 1);
+    Check(preset + " playback state changes keep the same button", ReferenceEquals(play, ActionButton("PlayPause")));
+    fake.State.Playing = false; Until(() => !vm.Playing);
+    var previous = fake.Previous;
+    var next = fake.Next;
+    PointerClick(window, ActionButton("Previous")); PointerClick(window, ActionButton("Next"));
+    Check(preset + " playback buttons dispatch one command per click", fake.Previous == previous + 1 && fake.Next == next + 1);
+    var lockButton = window.FindControl<Button>("LockAction")!;
+    PointerClick(window, lockButton, beforeRelease: () =>
+    {
+        root.RaiseEvent(new PointerEventArgs(InputElement.PointerExitedEvent, root, hover, window,
+            new Point(-1, -1), 0, PointerPointProperties.None, KeyModifiers.None));
+        Check(preset + " keeps the toolbar present until a pressed button finishes", window.FindControl<Control>("TopBar")!.IsHitTestVisible);
+    });
+    Check(preset + " lock click completes despite a hover exit", window.IsLocked);
+    Check(preset + " toolbar hides again after release", !window.FindControl<Control>("TopBar")!.IsHitTestVisible);
+    root.RaiseEvent(new PointerEventArgs(InputElement.PointerEnteredEvent, root, hover, window, new Point(50, 50), 0, PointerPointProperties.None, KeyModifiers.None));
+    next = fake.Next;
+    PointerClick(window, ActionButton("Next"));
+    Check(preset + " locking position still permits playback commands", fake.Next == next + 1);
+    PointerClick(window, lockButton);
+    Check(preset + " unlock button responds to the next click", !window.IsLocked);
+}
+window.Hide();
 Console.WriteLine("Verified native render scale: " + window.RenderScaling);
 window.Hide();
 vm.Dispose(); window.Hide(); settings.Close(); reloaded.Close(); Pump(400); Directory.Delete(config, true);
@@ -451,15 +536,15 @@ sealed class DemoBackend : BasePlayerBackend, ITrackFavorites
 {
     public PlayerState State = new() { Title = "Morning Light", Artists = ["OmniLyrics Demo"], Album = "Original sample", SourceApp = "Demo", PlayerName = "Demo player", Duration = TimeSpan.FromSeconds(180), Position = TimeSpan.FromSeconds(26.4), Playing = false };
     public TaskCompletionSource<bool> ReadGate = new(), WriteGate = new();
-    public int Writes;
-    public bool SupportsFavorites = true, Favorite;
-    public override PlayerState? GetCurrentState() => State;
+    public int Writes, Toggles, Previous, Next;
+    public bool SupportsFavorites = true, Favorite, Available = true;
+    public override PlayerState? GetCurrentState() => Available ? State : null;
     public override Task StartAsync(CancellationToken token) => Task.CompletedTask;
     public override Task PlayAsync() => Task.CompletedTask;
     public override Task PauseAsync() => Task.CompletedTask;
-    public override Task TogglePlayPauseAsync() => Task.CompletedTask;
-    public override Task NextAsync() => Task.CompletedTask;
-    public override Task PreviousAsync() => Task.CompletedTask;
+    public override Task TogglePlayPauseAsync() { Toggles++; return Task.CompletedTask; }
+    public override Task NextAsync() { Next++; return Task.CompletedTask; }
+    public override Task PreviousAsync() { Previous++; return Task.CompletedTask; }
     public override Task SeekAsync(TimeSpan position) => Task.CompletedTask;
     public async Task<FavoriteState?> GetFavoriteAsync(PlayerState expected, CancellationToken token)
     {

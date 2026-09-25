@@ -1,8 +1,9 @@
 <Project>
     <PropertyGroup>
-        <Version>0.4.0</Version>
+        <Version>0.4.1</Version>
         <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(RuntimeIdentifier)/</BaseIntermediateOutputPath>
         <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(RuntimeIdentifier)/</BaseOutputPath>
+        <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**</DefaultItemExcludes>
         <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
         <NuGetAuditMode>all</NuGetAuditMode>
         <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>

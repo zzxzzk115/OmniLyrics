@@ -199,7 +199,7 @@
         <Grid Margin="18,26,18,0" RowDefinitions="Auto,*">
             <Grid ColumnDefinitions="208,*">
                 <StackPanel Orientation="Horizontal" Spacing="11" Margin="8,0,0,0" VerticalAlignment="Center">
-                    <Image x:Name="SettingsLogo" Source="/Assets/logo.png" Width="38" Height="38"/>
+                    <Image x:Name="SettingsLogo" Source="/Assets/AppIcon.iconset/icon_128x128.png" Width="38" Height="38" RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     <StackPanel Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="OmniLyrics" FontSize="19" FontWeight="SemiBold"/>
                         <TextBlock Text="{DynamicResource Settings}" FontSize="12" Foreground="{DynamicResource SecondaryText}"/>

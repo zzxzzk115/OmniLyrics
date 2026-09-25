@@ -155,6 +155,7 @@ public static class Localization
         ["BackgroundColor"] = ("Background color", "背景颜色"),
         ["BackgroundOpacity"] = ("Background opacity", "背景不透明度"),
         ["UseBlur"] = ("Frosted glass background", "毛玻璃背景"),
+        ["NoSongPlaying"] = ("No song is playing", "没有正在播放的歌曲"),
         ["BlurExplanation"] = ("Uses system blur when available; otherwise falls back to the selected background color and opacity.", "系统支持时使用背景模糊；否则使用所选背景颜色与透明度。"),
         ["ColorHint"] = ("Colors use #RRGGBB, for example #F3C879.", "颜色格式为 #RRGGBB，例如 #F3C879。"),
         ["ShowTranslation"] = ("Show translation when available", "有译文时显示双语歌词"),

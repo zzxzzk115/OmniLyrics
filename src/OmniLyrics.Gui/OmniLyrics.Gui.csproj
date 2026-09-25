@@ -3,6 +3,7 @@
         <OutputType>WinExe</OutputType>
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>Assets/app.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <SelfContained>true</SelfContained>
     </PropertyGroup>
@@ -10,10 +11,14 @@
     <ItemGroup>
         <AvaloniaResource Include="Assets/app.ico"/>
         <AvaloniaResource Include="Assets/logo.png"/>
+        <AvaloniaResource Include="Assets/AppIcon.iconset/icon_32x32@2x.png"/>
+        <AvaloniaResource Include="Assets/AppIcon.iconset/icon_128x128.png"/>
+        <AvaloniaResource Include="Assets/app.icns"/>
     </ItemGroup>
 
     <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
         <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     </PropertyGroup>
 
     <ItemGroup>

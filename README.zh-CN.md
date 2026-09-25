@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./src/OmniLyrics.Gui/Assets/logo.png" alt="OmniLyrics" width="96" height="96">
+</p>
+
 # OmniLyrics
 
 [English](./README.md) | 简体中文

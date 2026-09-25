@@ -3,6 +3,11 @@ name: Build OmniLyrics
 on:
   push:
     branches: [ master ]
+  pull_request:
+    branches: [ dev, master ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -81,12 +86,80 @@ jobs:
       - name: Restore
         run: dotnet restore ${{ matrix.project }}
 
+      - name: Build macOS icon from all standard and Retina sizes
+        if: runner.os == 'macOS' && matrix.projectName == 'gui'
+        run: iconutil -c icns src/OmniLyrics.Gui/Assets/AppIcon.iconset -o src/OmniLyrics.Gui/Assets/app.icns
+
       - name: Publish
         run: |
           dotnet publish ${{ matrix.project }} -c Release -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}/${{ matrix.projectName }}
+
+      - name: Verify single executable
+        shell: pwsh
+        run: |
+          $output = "publish/${{ matrix.rid }}/${{ matrix.projectName }}"
+          $name = [IO.Path]::GetFileNameWithoutExtension("${{ matrix.project }}")
+          if ("${{ matrix.rid }}".StartsWith("win-")) { $name += ".exe" }
+          $files = @(Get-ChildItem -LiteralPath $output -Recurse -File -Force)
+          if ($files.Count -ne 1 -or $files[0].FullName -ne (Join-Path (Resolve-Path $output) $name)) {
+            throw "Expected only $name; found: $($files.Name -join ', ')"
+          }
+          Write-Host "Verified single executable: $name ($($files[0].Length) bytes)"
+
+      - name: Verify native Windows and macOS integrations
+        if: matrix.projectName == 'gui' && (runner.os == 'Windows' || matrix.rid == 'osx-arm64')
+        run: dotnet run --project tests/PlatformSmoke -c Release -r ${{ matrix.rid }}
+
+      - name: Start the published executable on its native host
+        if: runner.os == 'Windows' || matrix.rid == 'osx-arm64' || matrix.rid == 'linux-x64'
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP ([Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $folder | Out-Null
+          $env:OMNILYRICS_CONFIG_DIR = Join-Path $folder 'config'
+          $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $folder 'bundle'
+          $name = 'OmniLyrics.' + ('${{ matrix.projectName }}' -eq 'gui' ? 'Gui' : 'Cli')
+          if ($IsWindows) { $name += '.exe' }
+          $binary = (Resolve-Path "publish/${{ matrix.rid }}/${{ matrix.projectName }}/$name").Path
+          if ('${{ matrix.projectName }}' -eq 'cli') {
+            & $binary config show
+            if ($LASTEXITCODE -ne 0) { throw 'Published CLI failed to start.' }
+          } else {
+            $executable = $binary
+            $arguments = @('--settings')
+            if ($IsLinux) {
+              $executable = 'xvfb-run'
+              $arguments = @('-a', $binary, '--settings')
+            }
+            $process = Start-Process -FilePath $executable -ArgumentList $arguments -PassThru -RedirectStandardError "$folder/stderr.txt" -RedirectStandardOutput "$folder/stdout.txt"
+            try {
+              if ($process.WaitForExit(8000)) {
+                Get-Content "$folder/stderr.txt"
+                throw "Published GUI exited early: $($process.ExitCode)"
+              }
+              Write-Host 'Published GUI loaded and remained running.'
+            } finally {
+              if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
+            }
+          }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: omnilyrics-${{ matrix.projectName }}-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}/${{ matrix.projectName }}
+
+  ui:
+    name: UI regression (isolated Xvfb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install virtual display dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb openbox fonts-noto-cjk
+      - name: Check compositor command isolation
+        run: dotnet run --project tests/BackdropSmoke -c Release
+      - name: Exercise native UI on a private display
+        run: bash tests/run-ui-smoke.sh /tmp/omnilyrics-ui
