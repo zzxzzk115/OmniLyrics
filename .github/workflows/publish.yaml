@@ -163,3 +163,7 @@ jobs:
         run: dotnet run --project tests/BackdropSmoke -c Release
       - name: Exercise native UI on a private display
         run: bash tests/run-ui-smoke.sh /tmp/omnilyrics-ui
+      - name: Exercise native UI at 150% scale
+        env:
+          AVALONIA_GLOBAL_SCALE_FACTOR: '1.5'
+        run: bash tests/run-ui-smoke.sh /tmp/omnilyrics-ui-hidpi

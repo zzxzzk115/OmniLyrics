@@ -5,6 +5,7 @@
 [Setup]
 AppName=OmniLyrics
 AppVersion={#MyAppVersion}
+SetupIconFile=src\OmniLyrics.Gui\Assets\app.ico
 DefaultDirName={commonpf}\OmniLyrics
 DefaultGroupName=OmniLyrics
 OutputBaseFilename=OmniLyrics-Setup

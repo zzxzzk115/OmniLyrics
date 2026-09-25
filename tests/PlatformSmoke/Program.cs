@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using OmniLyrics.Gui;
 using OmniLyrics.Gui.Utils;
@@ -37,10 +38,24 @@ if (OperatingSystem.IsMacOS())
     var app = Native.Send(Native.objc_getClass("NSApplication"), Native.sel_registerName("sharedApplication"));
     var icon = Native.Send(app, Native.sel_registerName("applicationIconImage"));
     Check("macOS portable app installs the embedded ICNS as its Dock icon", icon != IntPtr.Zero);
-    var representations = Native.Send(icon, Native.sel_registerName("representations"));
-    var count = Native.Send(representations, Native.sel_registerName("count")).ToInt64();
-    Check("The Dock icon contains multiple resolutions", count > 1);
-    Console.WriteLine($"Dock icon representations: {count}");
+    // AppKit can wrap an ICNS container in a single NSImageRep. Check its
+    // embedded images with ImageIO rather than counting NSImage wrappers.
+    using var stream = AssetLoader.Open(new Uri("avares://OmniLyrics.Gui/Assets/app.icns"));
+    using var bytes = new MemoryStream(); stream.CopyTo(bytes);
+    var data = Native.CFDataCreate(IntPtr.Zero, bytes.ToArray(), (nint)bytes.Length);
+    var source = Native.CGImageSourceCreateWithData(data, IntPtr.Zero);
+    try
+    {
+        Check("ImageIO decodes the embedded ICNS", source != IntPtr.Zero);
+        var count = Native.CGImageSourceGetCount(source);
+        Check("The embedded Dock icon contains multiple resolutions", count > 1);
+        Console.WriteLine($"ICNS images decoded by macOS: {count}");
+    }
+    finally
+    {
+        if (source != IntPtr.Zero) Native.CFRelease(source);
+        if (data != IntPtr.Zero) Native.CFRelease(data);
+    }
 }
 if (Directory.Exists(config)) Directory.Delete(config, true);
 
@@ -50,4 +65,8 @@ static class Native
     [DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr objc_getClass(string name);
     [DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr sel_registerName(string name);
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] internal static extern IntPtr Send(IntPtr receiver, IntPtr selector);
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")] internal static extern IntPtr CFDataCreate(IntPtr allocator, byte[] bytes, nint length);
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")] internal static extern void CFRelease(IntPtr value);
+    [DllImport("/System/Library/Frameworks/ImageIO.framework/ImageIO")] internal static extern IntPtr CGImageSourceCreateWithData(IntPtr data, IntPtr options);
+    [DllImport("/System/Library/Frameworks/ImageIO.framework/ImageIO")] internal static extern nuint CGImageSourceGetCount(IntPtr source);
 }
