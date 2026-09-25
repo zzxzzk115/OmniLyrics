@@ -32,14 +32,14 @@ Cider 继续使用 Web API。其他播放器可选运行 `brew install media-con
 | --- | --- | --- |
 | macOS Apple Music | 原生 Apple Events | 允许自动化控制“音乐”，无需另行登录 |
 | Spotify 桌面端 | Spotify Web API | 设置 → 播放器连接 → Spotify：填写开发者应用 Client ID，并在浏览器授权 |
-| YesPlayMusic 桌面端 | 内置网易云本地 API | 保持播放器运行，在“播放器连接”中用网易云音乐手机 App 扫码，使用与播放器相同的账号 |
+| YesPlayMusic 桌面端 | 内置网易云本地 API | 优先直接使用本地 API；接口要求登录时，可用网易云音乐手机 App 扫码授权相同账号 |
 | Cider | V4 资料库 API | 开启 API 令牌认证时，需授予 library 权限 |
 
 仅在歌曲匹配且能读取收藏状态时显示按钮。支持固定歌曲 ID 的接口会按 ID 写入，切歌后拒绝旧状态，并回读确认结果。接口不可用或拒绝请求时，不会显示收藏成功。共享 `/favorites` 接口使用同一套适配。
 
 Spotify 使用 [PKCE 授权流程](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow)，无需 Client Secret。在开发者后台登记 **`http://127.0.0.1/spotify/callback`**（不填端口）；每次授权选择临时本地端口，符合 Spotify 的[回调地址规则](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri)。仅请求 `user-library-read`、`user-library-modify`、`user-read-currently-playing` 权限。开发模式仍受账号条件限制，详见[当前开发者要求](https://developer.spotify.com/documentation/web-api/concepts/quota-modes)。授权账号的当前歌曲必须与桌面播放器匹配。收藏使用现行 `/me/library` 接口，不依赖桌面脚本提供资料库控制。
 
-YesPlayMusic 的授权独立于播放器浏览器会话；需要现有本地接口 27232、10754 端口可用。取消授权或关闭设置会停止登录。“移除已保存的授权”仅清除 OmniLyrics 保存的凭据，不会退出播放器账号。Spotify 刷新令牌与网易云登录 Cookie 保存在配置目录中的独立私密文件，macOS/Linux 仅允许当前用户读写，不包含在导出的设置中；请勿分享凭据文件。
+YesPlayMusic 优先直接使用本地 Web API 的可用登录态，不要求手填 Token 或预先保存 Cookie。需要本地接口 27232、10754 端口可用，可先在设置中“检测本地 API”。官方服务仅转发 API 请求，不会自动带上播放器浏览器窗口的 Cookie；如果接口返回未登录，扫码可为 OmniLyrics 单独授权。取消授权或关闭设置会停止登录。“移除已保存的授权”仅清除 OmniLyrics 保存的凭据，不会退出播放器账号。Spotify 刷新令牌与网易云登录 Cookie 保存在配置目录中的独立私密文件，macOS/Linux 仅允许当前用户读写，不包含在导出的设置中；请勿分享凭据文件。
 
 ## 五种界面预设
 

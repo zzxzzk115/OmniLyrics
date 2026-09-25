@@ -55,7 +55,10 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
             }
         }
     }
-    private async Task<long?> UserIdAsync(string cookie, CancellationToken token)
+    public async Task<bool> HasLocalSessionAsync(CancellationToken token = default) =>
+        await UserIdAsync(null, token).ConfigureAwait(false) != null;
+
+    private async Task<long?> UserIdAsync(string? cookie, CancellationToken token)
     {
         var response = await ApiAsync("user/account", token, cookie).ConfigureAwait(false);
         return response.TryGetProperty("code", out var code) && code.GetInt32() == 200
@@ -73,7 +76,7 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
             track.GetProperty("al").GetProperty("name").GetString(), track.GetProperty("dt").GetDouble())) return null;
         return track.GetProperty("id").TryGetInt64(out var id) && id > 0 ? id.ToString(System.Globalization.CultureInfo.InvariantCulture) : null;
     }
-    private async Task<FavoriteState?> ReadAsync(PlayerState expected, string cookie, CancellationToken token)
+    private async Task<FavoriteState?> ReadAsync(PlayerState expected, string? cookie, CancellationToken token)
     {
         var id = await CurrentIdAsync(expected, token).ConfigureAwait(false);
         if (id == null || await UserIdAsync(cookie, token).ConfigureAwait(false) is not { } uid) return null;
@@ -87,7 +90,9 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
         try
         {
             var cookie = UserConfiguration.ReadYesPlayMusicCookie();
-            return string.IsNullOrEmpty(cookie) ? null : await ReadAsync(expected, cookie, token).ConfigureAwait(false);
+            // Try the local Web API even without OmniLyrics credentials. Some local
+            // services supply their existing session; only require QR login if it rejects access.
+            return await ReadAsync(expected, cookie, token).ConfigureAwait(false);
         }
         catch (Exception e) when (Unavailable(e)) { return null; }
     }
@@ -96,9 +101,10 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
         try
         {
             var cookie = UserConfiguration.ReadYesPlayMusicCookie();
-            if (string.IsNullOrEmpty(cookie) || previous.MediaKey != LyricsCache.TrackKey(expected)
+            if (previous.MediaKey != LyricsCache.TrackKey(expected)
                 || await CurrentIdAsync(expected, token).ConfigureAwait(false) != previous.TrackId
-                || UserConfiguration.ReadYesPlayMusicCookie() != cookie) return null;
+                || UserConfiguration.ReadYesPlayMusicCookie() != cookie
+                || await UserIdAsync(cookie, token).ConfigureAwait(false) == null) return null;
             var result = await ApiAsync("like", token, cookie, new() { ["id"] = previous.TrackId, ["like"] = favorite ? "true" : "false" }).ConfigureAwait(false);
             if (result.GetProperty("code").GetInt32() != 200) return null;
             for (var attempt = 0; attempt < 4; attempt++)

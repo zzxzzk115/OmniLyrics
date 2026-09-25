@@ -500,6 +500,7 @@
                                     <TextBlock Text="{DynamicResource YesPlayMusicFavoritesHint}" Classes="hint"/>
                                     <Image x:Name="YesPlayMusicQr" IsVisible="False" Width="200" Height="200" HorizontalAlignment="Left"/>
                                     <WrapPanel>
+                                        <Button Classes="action" x:Name="YesPlayMusicCheckButton" Content="{DynamicResource CheckLocalApi}" Click="YesPlayMusicCheck_Click" Margin="0,0,10,8"/>
                                         <Button Classes="action" x:Name="YesPlayMusicSignInButton" Content="{DynamicResource AuthorizeYesPlayMusic}" Click="YesPlayMusicSignIn_Click" Margin="0,0,10,8"/>
                                         <Button Classes="action" x:Name="YesPlayMusicCancelButton" IsVisible="False" Content="{DynamicResource Cancel}" Click="YesPlayMusicCancel_Click" Margin="0,0,10,8"/>
                                         <Button Classes="action" Content="{DynamicResource DisconnectAccount}" Click="YesPlayMusicDisconnect_Click" Margin="0,0,10,8"/>

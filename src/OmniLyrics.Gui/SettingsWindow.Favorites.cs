@@ -29,7 +29,7 @@ public partial class SettingsWindow
         if (!preserveInput || SpotifyClientIdInput.Text == _loadedSpotifyClientId) SpotifyClientIdInput.Text = id;
         _loadedSpotifyClientId = id;
         if (_spotifyLogin == null) SpotifyLoginStatus.Text = Localization.Get(UserConfiguration.ReadSpotifyTokens() == null ? "AuthorizationNotSaved" : "AuthorizationSaved");
-        if (_yesPlayMusicLogin == null) YesPlayMusicLoginStatus.Text = Localization.Get(string.IsNullOrEmpty(UserConfiguration.ReadYesPlayMusicCookie()) ? "AuthorizationNotSaved" : "AuthorizationSaved");
+        if (_yesPlayMusicLogin == null) YesPlayMusicLoginStatus.Text = Localization.Get(string.IsNullOrEmpty(UserConfiguration.ReadYesPlayMusicCookie()) ? "YesPlayMusicLocalFirst" : "AuthorizationSaved");
     }
     private async void SpotifySignIn_Click(object? sender, RoutedEventArgs e)
     {
@@ -65,6 +65,17 @@ public partial class SettingsWindow
         _spotifyLogin?.Cancel();
         try { UserConfiguration.ClearSpotifyTokens(); SpotifyLoginStatus.Text = Localization.Get("AuthorizationNotSaved"); }
         catch { SpotifyLoginStatus.Text = Localization.Get("PreferencesSaveError"); }
+    }
+    private async void YesPlayMusicCheck_Click(object? sender, RoutedEventArgs e)
+    {
+        YesPlayMusicCheckButton.IsEnabled = false;
+        try
+        {
+            using var api = new YesPlayMusicFavorites();
+            YesPlayMusicLoginStatus.Text = Localization.Get(await api.HasLocalSessionAsync() ? "YesPlayMusicLocalConnected" : "YesPlayMusicLocalNeedsLogin");
+        }
+        catch { YesPlayMusicLoginStatus.Text = Localization.Get("YesPlayMusicUnavailable"); }
+        finally { YesPlayMusicCheckButton.IsEnabled = true; }
     }
     private async void YesPlayMusicSignIn_Click(object? sender, RoutedEventArgs e)
     {
@@ -102,7 +113,7 @@ public partial class SettingsWindow
     private void YesPlayMusicDisconnect_Click(object? sender, RoutedEventArgs e)
     {
         _yesPlayMusicLogin?.Cancel();
-        try { UserConfiguration.ClearYesPlayMusicCookie(); YesPlayMusicLoginStatus.Text = Localization.Get("AuthorizationNotSaved"); }
+        try { UserConfiguration.ClearYesPlayMusicCookie(); YesPlayMusicLoginStatus.Text = Localization.Get("YesPlayMusicLocalFirst"); }
         catch { YesPlayMusicLoginStatus.Text = Localization.Get("PreferencesSaveError"); }
     }
 }
