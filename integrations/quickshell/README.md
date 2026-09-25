@@ -53,7 +53,7 @@ overrides the saved mode; in token mode, `CIDER_API_TOKEN` takes precedence over
 in process arguments, emitted in status output, or stored in QML.
 
 For V4 on Linux, the lyric service can use MPRIS without a Cider token.
-See the [shared configuration guide](../../README.md#cider-v3-support-and-configuration)
+See the [shared configuration guide](../../docs/user-guide.md#cider-v3-support-and-configuration)
 for CLI/terminal/GUI setup and environment precedence. Playback targets V3+;
 the favorite adapter specifically targets V4's API.
 

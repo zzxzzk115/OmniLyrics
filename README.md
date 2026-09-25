@@ -5,7 +5,7 @@ English | [简体中文](./README.zh-CN.md)
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
 
 Version **0.4.0** adds five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching.
-See the [user guide](./docs/user-guide.md) for configuration, screenshots and integrations.
+See the [user guide](./docs/user-guide.md) for configuration and integrations.
 
 ## Showcase
 
