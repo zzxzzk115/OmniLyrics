@@ -19,6 +19,7 @@ public partial class SettingsWindow : Window
     public bool KeepAlive { get; set; }
     private bool _reloading;
     private bool _savingScale;
+    private double _solidBackgroundOpacity = 60;
     private AppearanceSettings? _lastWindowState;
     private readonly ConfigurationWatcher _watcher;
     private CiderConnectionSettings? _loadedCider;
@@ -31,6 +32,12 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        InitializeMacEnvironment();
+        BlurMode.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty && !_reloading)
+                UpdateBlurOptions();
+        };
         _ = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
         if (OperatingSystem.IsLinux())
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dialog);
@@ -97,6 +104,8 @@ public partial class SettingsWindow : Window
             ReloadThemePresets();
             OpacitySlider.Value = appearance.BackgroundOpacity * 100;
             BlurMode.IsChecked = appearance.UseBlur;
+            if (!appearance.UseBlur || appearance.BackgroundOpacity > 0) _solidBackgroundOpacity = appearance.BackgroundOpacity * 100;
+            UpdateBlurOptions();
             AppearanceStatus.Text = "";
             var lyrics = UserConfiguration.LoadLyrics();
             PrefetchEnabled.IsChecked = lyrics.Prefetch;
@@ -123,6 +132,23 @@ public partial class SettingsWindow : Window
             TestButton.IsEnabled = false;
         }
         finally { _reloading = false; }
+    }
+
+    private void UpdateBlurOptions()
+    {
+        var nativeBlur = OperatingSystem.IsMacOS() && BlurMode.IsChecked == true;
+        MacBlurOpacityHint.IsVisible = nativeBlur;
+        if (nativeBlur)
+        {
+            if (OpacitySlider.IsEnabled && !_reloading) _solidBackgroundOpacity = OpacitySlider.Value;
+            OpacitySlider.Value = 0;
+            OpacitySlider.IsEnabled = false;
+        }
+        else
+        {
+            if (!OpacitySlider.IsEnabled) OpacitySlider.Value = _solidBackgroundOpacity;
+            OpacitySlider.IsEnabled = true;
+        }
     }
 
     private void UpdateTokenHint()
@@ -239,7 +265,7 @@ public partial class SettingsWindow : Window
                 ApproximateMode.IsChecked == true, TranslationMode.IsChecked == true,
                 (double)(LyricFontSize.Value ?? 32), (double)(TranslationSize.Value ?? 18),
                 Rgb(TextColorPicker.Color), Rgb(HighlightColorPicker.Color), Rgb(BackgroundColorPicker.Color),
-                OpacitySlider.Value / 100, BlurMode.IsChecked == true,
+                OperatingSystem.IsMacOS() && BlurMode.IsChecked == true ? 0 : OpacitySlider.Value / 100, BlurMode.IsChecked == true,
                 ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color), AppearancePreferences.Current.UiScale);
             if (PlayerLyricsEnabled.IsChecked != true && QQLyricsEnabled.IsChecked != true && NeteaseLyricsEnabled.IsChecked != true)
             {
@@ -267,6 +293,7 @@ public partial class SettingsWindow : Window
         var key = (tab.Tag?.ToString() ?? "General").Split(' ')[0];
         PageTitle.Text = Localization.Get(key);
         PageSubtitle.Text = Localization.Get(key + "Subtitle");
+        if (tab == MacEnvironmentTab) _ = RefreshMacEnvironmentAsync();
     }
 
     private async void EditConfiguration_Click(object? sender, RoutedEventArgs e) => await new ConfigurationEditorWindow().ShowDialog(this);
@@ -385,6 +412,7 @@ public partial class SettingsWindow : Window
             LanguageMode.SelectedIndex = UserConfiguration.LoadLanguage() switch { "zh-CN" => 1, "en" => 2, _ => 0 };
             VersionText.Text = Localization.Format("Version", ApplicationInfo.Version);
             UpdateTokenHint();
+            RenderMacEnvironment();
             SettingsTabs_SelectionChanged(this, null!);
         }
         catch { StatusText.Text = Localization.Get("ConfigReadError"); }
@@ -415,6 +443,7 @@ public partial class SettingsWindow : Window
         var tabs = SettingsTabs.Items.OfType<TabItem>().ToList();
         foreach (var tab in tabs)
         {
+            if (tab == MacEnvironmentTab && !OperatingSystem.IsMacOS()) { tab.IsVisible = false; continue; }
             var tags = (tab.Tag?.ToString() ?? "").Split(' ');
             var searchable = string.Join(" ", tags.Select(tag => Localization.Catalog.TryGetValue(tag, out var value)
                 ? $"{tag} {value.English} {value.Chinese}" : tag));

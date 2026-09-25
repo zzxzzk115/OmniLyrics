@@ -110,6 +110,10 @@ jobs:
         if: matrix.projectName == 'gui' && (runner.os == 'Windows' || matrix.rid == 'osx-arm64')
         run: dotnet run --project tests/PlatformSmoke -c Release -r ${{ matrix.rid }}
 
+      - name: Verify macOS backend lifecycle and routing without player accounts
+        if: matrix.projectName == 'gui' && matrix.rid == 'osx-arm64'
+        run: dotnet run --project tests/MacBackendSmoke -c Release
+
       - name: Start the published executable on its native host
         if: runner.os == 'Windows' || matrix.rid == 'osx-arm64' || matrix.rid == 'linux-x64'
         shell: pwsh

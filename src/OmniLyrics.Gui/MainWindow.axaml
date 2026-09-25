@@ -21,8 +21,14 @@
         https://avaloniaui.github.io/icons.html
      -->
     <Window.Styles>
+        <Style Selector="controls|AlignedTextBlock">
+            <Setter Property="Effect">
+                <DropShadowEffect Color="{DynamicResource LyricOutlineColor}" BlurRadius="3"
+                                  OffsetX="0" OffsetY="0" Opacity="{DynamicResource LyricShadowOpacity}" />
+            </Setter>
+        </Style>
         <Style Selector="Button">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource LyricControlSurface}" />
             <Setter Property="Padding" Value="9" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Width" Value="36" />
@@ -71,7 +77,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True" Margin="0,0,12,0">
+                    <Border Background="{DynamicResource LyricControlSurface}" CornerRadius="8" Padding="6,0"
+                            HorizontalAlignment="Left" Margin="0,0,12,0">
+                    <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True">
                         <Image x:Name="AppLogo" Source="/Assets/AppIcon.iconset/icon_32x32@2x.png" Width="22" Height="22"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                VerticalAlignment="Center" />
@@ -86,6 +94,7 @@
 
                                    Foreground="{DynamicResource LyricSecondary}" VerticalAlignment="Center" />
                     </StackPanel>
+                    </Border>
 
                     <!-- Toolbar -->
                     <StackPanel Grid.Column="1"
@@ -110,7 +119,7 @@
                                 AutomationProperties.Name="{Binding FavoriteLabel}">
                             <Grid>
                                 <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
-                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricAccent}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
                             </Grid>
                         </Button>
 
@@ -179,12 +188,7 @@
                            Foreground="{DynamicResource LyricSecondary}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center">
-                    <controls:AlignedTextBlock.Effect>
-                        <DropShadowEffect BlurRadius="0"
-                                          Color="Black"
-                                          OffsetX="2"
-                                          OffsetY="2" />
-                    </controls:AlignedTextBlock.Effect>
+
                 </controls:AlignedTextBlock>
             </StackPanel>
             <Grid x:Name="ReadingLayout" IsVisible="False" Margin="20,48,20,22"
@@ -218,7 +222,7 @@
                                 AutomationProperties.Name="{Binding FavoriteLabel}">
                             <Grid>
                                 <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
-                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricAccent}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
                             </Grid>
                         </Button>
 
@@ -254,11 +258,11 @@
                 </controls:SongInfoPanel>
                 <controls:CenteredLyricsPanel x:Name="ContextPanel" Grid.Column="2" ClipToBounds="True">
                     <StackPanel Spacing="22" VerticalAlignment="Top" IsHitTestVisible="False">
-                        <StackPanel Spacing="5" Opacity="0.25">
+                        <StackPanel x:Name="EarlierGroup" Spacing="5" Opacity="0.25">
                             <controls:AlignedTextBlock x:Name="EarlierContext" Text="{Binding EarlierLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="EarlierTranslation" Text="{Binding EarlierLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
-                        <StackPanel Spacing="5" Opacity="0.48">
+                        <StackPanel x:Name="PreviousGroup" Spacing="5" Opacity="0.48">
                             <controls:AlignedTextBlock x:Name="PreviousContext" Text="{Binding PreviousLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="PreviousTranslation" Text="{Binding PreviousLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
@@ -271,11 +275,11 @@
                                    TextWrapping="Wrap" MaxLines="3" Opacity="0.85" />
                     </StackPanel>
                     <StackPanel Spacing="22" IsHitTestVisible="False">
-                        <StackPanel Spacing="5" Opacity="0.48">
+                        <StackPanel x:Name="NextGroup" Spacing="5" Opacity="0.48">
                             <controls:AlignedTextBlock x:Name="NextContext" Text="{Binding SecondaryLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="NextTranslation" Text="{Binding SecondaryLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
-                        <StackPanel Spacing="5" Opacity="0.25">
+                        <StackPanel x:Name="LaterGroup" Spacing="5" Opacity="0.25">
                             <controls:AlignedTextBlock x:Name="LaterContext" Text="{Binding LaterLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="LaterTranslation" Text="{Binding LaterLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>

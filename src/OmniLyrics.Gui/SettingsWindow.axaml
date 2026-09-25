@@ -328,6 +328,7 @@
                                         <StackPanel Spacing="4" VerticalAlignment="Center" Margin="0,0,20,0">
                                             <TextBlock Text="{DynamicResource UseBlur}"/>
                                             <TextBlock Text="{DynamicResource BlurExplanation}" Classes="hint"/>
+                                            <TextBlock x:Name="MacBlurOpacityHint" Text="{DynamicResource MacBlurOpacityHint}" Classes="hint" IsVisible="False"/>
                                         </StackPanel>
                                         <ToggleSwitch x:Name="BlurMode" Grid.Column="1" HorizontalAlignment="Right"/>
                                     </Grid>
@@ -545,6 +546,43 @@
                                         <NumericUpDown x:Name="PrefetchCount" Grid.Column="1" Minimum="1" Maximum="20" Increment="1" FormatString="0" Width="110"/>
                                     </Grid>
                                     <TextBlock x:Name="LyricsStatus" Classes="hint"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="MacEnvironmentTab" IsVisible="False" Tag="MacEnvironment macOS Apple Events Music Spotify Homebrew brew media-control 自动化 安装 环境">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <PathIcon Classes="navIcon" Width="17" Height="17" Data="M2 3h20v14H2zm2 2v10h16V5zM8 19h8v2H8z"/>
+                            <TextBlock Text="{DynamicResource MacEnvironment}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <ScrollViewer Margin="30,10,12,0" Padding="0,0,16,12" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="0,0,0,16" MaxWidth="720">
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,16">
+                                    <TextBlock Text="{DynamicResource MacNativeTitle}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource MacNativeHint}" Classes="hint"/>
+                                    <TextBlock x:Name="MacNativeStatus" Text="{DynamicResource MacChecking}" TextWrapping="Wrap"/>
+                                    <Button Classes="action" Content="{DynamicResource MacOpenAutomation}" Click="MacAutomation_Click"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,16">
+                                    <TextBlock Text="{DynamicResource MacFallbackTitle}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource MacFallbackHint}" Classes="hint"/>
+                                    <TextBlock x:Name="MacMediaStatus" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="MacMediaPath" Classes="hint"/>
+                                    <TextBlock x:Name="MacBrewStatus" Classes="hint"/>
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button Classes="action" x:Name="MacRefreshButton" Content="{DynamicResource MacRefresh}" Click="MacRefresh_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action primary" x:Name="MacInstallButton" IsEnabled="False" Content="{DynamicResource MacInstallMediaControl}" Click="MacInstall_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="MacCancelInstallButton" IsVisible="False" Content="{DynamicResource MacCancelInstall}" Click="MacCancelInstall_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="MacBrewWebsiteButton" IsVisible="False" Content="{DynamicResource MacOpenHomebrew}" Click="MacBrewWebsite_Click" Margin="0,0,10,8"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="MacInstallStatus" TextWrapping="Wrap"/>
+                                    <TextBox x:Name="MacInstallLog" IsVisible="False" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="150" FontSize="11"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

@@ -1,12 +1,33 @@
-﻿using System.Diagnostics;
 using System.Text.Json;
+using System.Globalization;
 using OmniLyrics.Core;
 using Timer = System.Timers.Timer;
 
 namespace OmniLyrics.Backends.Mac;
 
-public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
+public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable, IPlayerBackendStatus
 {
+    private readonly string _executable;
+    private readonly object _gate = new();
+    private CancellationTokenSource? _cts;
+    private bool _disposed;
+    public string? ConnectionError { get; private set; }
+
+    public MacOSMediaControlBackend() : this(ResolveExecutable() ?? "media-control") { }
+    internal MacOSMediaControlBackend(string executable) => _executable = executable;
+
+    public static string? ResolveExecutable()
+    {
+        var configured = Environment.GetEnvironmentVariable("OMNILYRICS_MEDIA_CONTROL");
+        if (string.Equals(configured, "off", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!string.IsNullOrWhiteSpace(configured)) return File.Exists(configured) ? Path.GetFullPath(configured) : null;
+        // GUI launches do not necessarily inherit a shell's Homebrew PATH.
+        var directories = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator)
+            .Concat(new[] { "/opt/homebrew/bin", "/usr/local/bin" });
+        return directories.Where(d => !string.IsNullOrWhiteSpace(d))
+            .Select(d => Path.Combine(d, "media-control")).FirstOrDefault(File.Exists);
+    }
+
     private long _lastElapsedMicros;
     private PlayerState? _lastState;
     private long _lastTickMicros;
@@ -17,75 +38,78 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
 
     // timer for incremental position updates
     private Timer? _posTimer;
-    private Process? _proc;
     private Task? _streamLoop;
 
     public void Dispose()
     {
-        _proc?.Dispose();
-        _streamLoop?.Dispose();
+        if (_disposed) return;
+        _disposed = true;
+        _cts?.Cancel();
         _posTimer?.Dispose();
+        _streamLoop?.GetAwaiter().GetResult();
+        _cts?.Dispose();
     }
 
-    public override PlayerState? GetCurrentState() => _lastState;
+    public override PlayerState? GetCurrentState() { lock (_gate) return _lastState?.DeepCopy(); }
 
     public override Task StartAsync(CancellationToken token)
     {
-        StartStreamLoop(token);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_streamLoop != null) return Task.CompletedTask;
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        _streamLoop = Task.Run(() => StreamLoopAsync(_cts.Token), CancellationToken.None);
         StartPositionTimer();
         return Task.CompletedTask;
     }
 
-    // --------------------------------------------------------------
-    // Stream loop: metadata updates (title/artist/duration/playing)
-    // --------------------------------------------------------------
-    private void StartStreamLoop(CancellationToken token)
+    private async Task StreamLoopAsync(CancellationToken token)
     {
-        var psi = new ProcessStartInfo
+        while (!token.IsCancellationRequested)
         {
-            FileName = "media-control",
-            Arguments = "stream --micros",
-            RedirectStandardOutput = true,
-            RedirectStandardError = false,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        _proc = Process.Start(psi);
-
-        if (_proc == null)
-            throw new Exception("Failed to start media-control");
-
-        _streamLoop = Task.Run(async () =>
-        {
-            using var reader = _proc.StandardOutput;
-
-            while (!token.IsCancellationRequested)
+            try
             {
-                string? line = await reader.ReadLineAsync();
-                if (line == null)
-                    break;
-                if (!string.IsNullOrWhiteSpace(line))
+                await MacProcess.StreamAsync(MacProcess.StartInfo(_executable, "stream", "--micros"), line =>
+                {
+                    ConnectionError = null;
                     ProcessJsonLine(line);
+                }, token).ConfigureAwait(false);
             }
-        }, token);
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                if (ConnectionError == null) Console.Error.WriteLine($"media-control: {error.Message}");
+                ConnectionError = Localization.Get("MacFallbackUnavailable");
+                lock (_gate) { _lastState = null; _playing = false; _lastElapsedMicros = _lastTimestampMicros = 0; }
+                EmitStateChanged(null!);
+            }
+            try { await Task.Delay(3000, token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { break; }
+        }
     }
 
-    private void ProcessJsonLine(string line)
+    internal void ProcessJsonLine(string line)
+    {
+        PlayerState? state;
+        lock (_gate) { ParseJsonLine(line); state = _lastState?.DeepCopy(); }
+        EmitStateChanged(state!);
+    }
+
+    private void ParseJsonLine(string line)
     {
         try
         {
-            var doc = JsonDocument.Parse(line);
+            using var doc = JsonDocument.Parse(line);
 
             if (!doc.RootElement.TryGetProperty("payload", out var payload))
                 return;
 
             // empty → no active media
-            if (payload.ValueKind == JsonValueKind.Object &&
-                payload.EnumerateObject().Count() == 0)
+            if (payload.ValueKind == JsonValueKind.Null || payload.ValueKind == JsonValueKind.Object &&
+                !payload.EnumerateObject().Any())
             {
                 _lastState = null;
-                EmitStateChanged(null!);
+                _playing = false;
+                _lastElapsedMicros = _lastTimestampMicros = 0;
                 return;
             }
 
@@ -130,8 +154,9 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
             _lastTickMicros = NowMicros();
 
             // compute current position at packet arrival
-            long diff = NowMicros() - timestampMicros;
-            long positionMicros = playing ? elapsedMicros + diff : elapsedMicros;
+            long diff = timestampMicros > 0 ? Math.Max(0, NowMicros() - timestampMicros) : 0;
+            long positionMicros = Math.Max(0, playing ? elapsedMicros + diff : elapsedMicros);
+            if (durationMicros > 0) positionMicros = Math.Min(positionMicros, durationMicros);
 
             var newState = new PlayerState
             {
@@ -145,7 +170,7 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
             newState.Artists.Add(artist);
 
             _lastState = newState;
-            EmitStateChanged(newState);
+
         }
         catch
         {
@@ -163,27 +188,19 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
 
         _posTimer.Elapsed += (_, _) =>
         {
-            var state = _lastState;
-            if (state == null || !state.Playing)
-                return;
-
-            long now = NowMicros();
-            long delta = now - _lastTickMicros;
-            _lastTickMicros = now;
-
-            long newPos = (long)state.Position.TotalMicroseconds + delta;
-
-            // clamp to duration
-            if (state.Duration > TimeSpan.Zero &&
-                newPos > (long)state.Duration.TotalMicroseconds)
+            PlayerState updated;
+            lock (_gate)
             {
-                newPos = (long)state.Duration.TotalMicroseconds;
+                if (_disposed || _lastState is not { Playing: true } state) return;
+                long now = NowMicros();
+                long delta = Math.Max(0, now - _lastTickMicros);
+                _lastTickMicros = now;
+                long newPos = (long)state.Position.TotalMicroseconds + delta;
+                if (state.Duration > TimeSpan.Zero) newPos = Math.Min(newPos, (long)state.Duration.TotalMicroseconds);
+                updated = state.DeepCopy();
+                updated.Position = TimeSpan.FromMicroseconds(newPos);
+                _lastState = updated;
             }
-
-            var updated = state.DeepCopy();
-            updated.Position = TimeSpan.FromMicroseconds(newPos);
-
-            _lastState = updated;
             EmitStateChanged(updated);
         };
 
@@ -202,20 +219,11 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
     public override Task TogglePlayPauseAsync() => RunCmd("toggle-play-pause");
     public override Task NextAsync() => RunCmd("next-track");
     public override Task PreviousAsync() => RunCmd("previous-track");
-    public override Task SeekAsync(TimeSpan p) => RunCmd($"seek {p.TotalSeconds}");
+    public override Task SeekAsync(TimeSpan p) => RunCmd("seek", Math.Max(0, p.TotalSeconds).ToString(CultureInfo.InvariantCulture));
 
-    private Task RunCmd(string arg)
+    private Task RunCmd(params string[] arguments)
     {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "media-control",
-            Arguments = arg,
-            RedirectStandardOutput = false,
-            RedirectStandardError = false,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        });
-
-        return Task.CompletedTask;
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return MacProcess.RunAsync(MacProcess.StartInfo(_executable, arguments), _cts?.Token ?? default);
     }
 }

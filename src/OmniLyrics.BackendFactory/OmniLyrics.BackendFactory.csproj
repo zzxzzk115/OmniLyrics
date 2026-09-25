@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -16,4 +16,5 @@
         <ProjectReference Include="..\OmniLyrics.Backends.Windows\OmniLyrics.Backends.Windows.csproj"/>
     </ItemGroup>
 
+    <ItemGroup><InternalsVisibleTo Include="MacBackendSmoke" /></ItemGroup>
 </Project>

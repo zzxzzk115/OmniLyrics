@@ -55,6 +55,13 @@ public class App : Application
                 };
             }
 
+            if (System.OperatingSystem.IsMacOS() && desktop.MainWindow is { } owner)
+            {
+                var setupCancellation = new System.Threading.CancellationTokenSource();
+                desktop.Exit += (_, _) => setupCancellation.Cancel();
+                owner.Opened += async (_, _) => await MacStartupSetup.CheckAsync(owner,
+                    () => _settingsWindow ??= owner as SettingsWindow ?? new SettingsWindow { KeepAlive = true }, setupCancellation.Token);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -127,7 +127,7 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
             Title = null; Artist = ""; Album = null; ArtworkUrl = null;
             Position = Duration = TimeSpan.Zero; Playing = false;
             SetLyrics(null);
-            var message = Localization.Get("NoSongPlaying");
+            var message = _backend.ServiceError ?? Localization.Get("NoSongPlaying");
             if (_noSongLine.Text != message) _noSongLine = new(TimeSpan.Zero, message, null);
             CurrentLine = _noSongLine;
             SecondaryLine = PreviousLine = EarlierLine = LaterLine = Empty;

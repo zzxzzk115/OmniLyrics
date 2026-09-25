@@ -48,7 +48,12 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
     public ServiceRole Role => _role;
     public LyricsSnapshot? RemoteSnapshot => _remote?.Snapshot;
     public string? LastControlError { get; private set; }
-    public string? ServiceError { get; private set; }
+    private string? _serviceError;
+    public string? ServiceError
+    {
+        get { lock (_gate) return _serviceError ?? (_local as IPlayerBackendStatus)?.ConnectionError; }
+        private set => _serviceError = value;
+    }
     public override PlayerState? GetCurrentState()
     {
         var remote = _remote;
@@ -161,7 +166,7 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                                     else
                                     {
                                         try { await StartOwnedAsync(settings, token); ServiceError = null; }
-                                        catch (Exception e) when (e is IOException or System.Net.Sockets.SocketException or InvalidOperationException)
+                                        catch (Exception e) when (e is IOException or System.Net.Sockets.SocketException or System.ComponentModel.Win32Exception or InvalidOperationException)
                                         {
                                             await StopOwnedAsync();
                                             ReportServiceError();
@@ -174,7 +179,7 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                         else ReportServiceError();
                     }
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException)
+                catch (Exception e) when (e is IOException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException)
                 { ReportServiceError(); }
                 await Task.Delay(_remote?.Snapshot.State?.Playing == true ? 100 : 250, token);
             }
@@ -270,7 +275,7 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                 if (local != null) await localAction(local);
             }
         }
-        catch (Exception error) when (error is HttpRequestException or OperationCanceledException or ObjectDisposedException)
+        catch (Exception error) when (error is HttpRequestException or IOException or System.ComponentModel.Win32Exception or InvalidOperationException or OperationCanceledException)
         {
             // Never replay a failed toggle/next command against a different backend.
             LastControlError = Localization.Text("Could not send playback command. Please try again.");

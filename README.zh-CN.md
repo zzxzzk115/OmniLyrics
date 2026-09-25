@@ -37,7 +37,11 @@ Linux Waybar（单行模式，--mode line）：
 
 下载并安装 [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 
-> macOS 上需要安装 `media-control`：
+> macOS 上 Apple Music 和 Spotify 通过系统自带的 Apple Events 桥接连接，首次使用时请允许「自动化」权限，无需安装 Homebrew 依赖。Cider 使用已有 Web API。
+>
+>「设置 → macOS 环境」提供连接检测和 Homebrew 安装按钮。原生接入与兜底都不可用时，每次启动都会再次提示安装。
+
+> 其他播放器可选安装 `media-control` 作为兜底：
 > ```bash
 > brew install media-control
 > ```
@@ -202,7 +206,8 @@ GUI、交互终端和 CLI 共享这些设置。令牌输入框留空会保留已
 
 - [x] Windows SMTC
 - [x] Linux MPRIS
-- [x] macOS media-control
+- [x] macOS 可选 media-control 兜底
+- [x] macOS Apple Music / Spotify 原生 Apple Events 接入
 
 播放器专用后端：
 

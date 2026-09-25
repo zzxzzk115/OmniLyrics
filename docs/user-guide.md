@@ -10,11 +10,22 @@ Open the lyric window's gear button or the tray menu to access **Settings**.
 | Platform | Connection | Players |
 | --- | --- | --- |
 | Windows | System Media Transport Controls (SMTC) | Spotify and other players exposing system media controls |
-| macOS | `media-control` | Apple Music, Spotify, Cider and other players exposing Now Playing |
+| macOS | Native Apple Events | Apple Music and Spotify desktop |
+| macOS | Optional `media-control` | Other players exposing Now Playing |
 | Linux | MPRIS | Spotify and other MPRIS players |
 | All three | Player-specific API | Cider V3+ and YesPlayMusic |
 
-On macOS, install `media-control` with `brew install media-control`.
+On macOS, Apple Music and Spotify use public Apple Events through the system's `/usr/bin/osascript` (JavaScript for Automation). No extra installation is needed. Only running players are queried; OmniLyrics does not launch them. Allow the macOS Automation prompt for the application that launches OmniLyrics (for example, your terminal). If denied, enable the player under **System Settings → Privacy & Security → Automation**, then restart OmniLyrics. The lyric window shows an actionable message when native access fails and no other connection is available.
+
+On macOS, **Settings → macOS environment** checks native access, Homebrew and media-control compatibility. Each CLI/GUI startup checks again. When both native access and media-control are unavailable, an interactive launch asks whether to install the fallback; declining does not suppress the next launch’s prompt. Line/JSON modes and redirected input/output print recovery instructions to stderr without waiting for input. Installation runs only after confirmation and shows Homebrew output; cancellation and failures remain visible. If Homebrew is missing, the page links to its official setup. A pending Automation request is not treated as a failed connection. Explicitly disabling the fallback with `OMNILYRICS_MEDIA_CONTROL=off` suppresses installation requests because installation cannot enable a disabled backend.
+
+Apple Events are not exclusive to recent macOS releases: the JXA bridge used here dates to [OS X 10.10](https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/). This .NET 10 application requires [macOS 14 or newer](https://github.com/dotnet/core/blob/main/release-notes/10.0/supported-os.md); installing media-control does not make unsupported operating systems supported.
+
+With macOS blur enabled, the lyric background layer automatically uses 0% opacity so it does not cover Avalonia's native blur material. Text receives local contrast protection and controls use small backing surfaces, leaving the rest of the toolbar transparent; low-contrast text colors are adjusted for rendering without changing the saved palette. Disabling blur restores the editable background opacity. Apple Events progress is interpolated continuously; small sampling errors are corrected gradually instead of stepping the karaoke highlight forward.
+
+Cider continues to use its Web API. For other players, optionally install `media-control` with `brew install media-control`. OmniLyrics checks PATH and the standard Homebrew locations. Set `OMNILYRICS_MEDIA_CONTROL=off` to disable this fallback, or set it to the executable's absolute path. Apple Music / Spotify native connections and Cider's Web API take precedence over a duplicate system-media connection. Missing or failed optional connections do not prevent other players from working.
+
+Native Apple Music / Spotify support covers metadata, playback position, play/pause, previous/next and seek. It does not add native queue or favorite support.
 Playback, queue access and favorites depend on the connected player's capabilities.
 The favorite button appears only when supported; the current adapter uses Cider V4's library API.
 

@@ -37,7 +37,11 @@ Linux Waybar (Line Mode, --mode line):
 
 Download and Install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 
-> On macOS, you need to install `media-control`:
+> On macOS, Apple Music and Spotify connect through the built-in Apple Events bridge. Allow the Automation permission when prompted; no Homebrew dependency is required. Cider uses its Web API.
+>
+> Settings → macOS environment checks access and offers an explicit Homebrew install button. Every startup prompts again if both native access and the fallback are unavailable.
+
+> Other players can optionally use `media-control`:
 > ```bash
 > brew install media-control
 > ```
@@ -202,7 +206,8 @@ Common Backends:
 
 - [x] SMTC for Windows
 - [x] MPRIS for Linux
-- [x] media-control for macOS
+- [x] Optional media-control fallback for macOS
+- [x] Native Apple Events for Apple Music / Spotify on macOS
 
 Software-specific Backends:
 

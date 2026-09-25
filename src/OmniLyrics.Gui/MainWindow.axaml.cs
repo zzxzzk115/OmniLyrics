@@ -80,6 +80,7 @@ public partial class MainWindow : Window
     private void ApplyAppearance()
     {
         var settings = AppearancePreferences.Current;
+        var palette = LyricPalette.Create(settings);
         var reading = settings.Preset is "focus" or "portrait" or "fullscreen";
         var portrait = settings.Preset == "portrait";
         var fullscreen = settings.Preset == "fullscreen";
@@ -91,14 +92,20 @@ public partial class MainWindow : Window
         CanResize = true;
         PrimaryLyric.FontSize = ReadingLyric.FontSize = settings.FontSize;
         PrimaryLyric.Height = settings.FontSize * 1.5;
-        PrimaryLyric.HighlightBrush = ReadingLyric.HighlightBrush = Brush.Parse(settings.HighlightColor);
-        PrimaryLyric.BaseBrush = ReadingLyric.BaseBrush = Brush.Parse(settings.TextColor);
+        PrimaryLyric.HighlightBrush = ReadingLyric.HighlightBrush = new SolidColorBrush(palette.Highlight);
+        PrimaryLyric.BaseBrush = ReadingLyric.BaseBrush = new SolidColorBrush(palette.Text);
+        PrimaryLyric.DrawShadow = ReadingLyric.DrawShadow = palette.Translucent;
+        PrimaryLyric.OutlineBrush = ReadingLyric.OutlineBrush = new SolidColorBrush(palette.Outline);
+        RequestedThemeVariant = palette.Dark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+        foreach (var group in new[] { EarlierGroup, PreviousGroup, NextGroup, LaterGroup })
+            group.Opacity = palette.Translucent ? 1 : group == EarlierGroup || group == LaterGroup ? .25 : .48;
+        ReadingTranslation.Opacity = palette.Translucent ? 1 : .85;
         ClassicTranslation.FontSize = ReadingTranslation.FontSize = settings.TranslationFontSize;
-        ClassicTranslation.Foreground = ReadingTranslation.Foreground = Brush.Parse(settings.TextColor);
+        ClassicTranslation.Foreground = ReadingTranslation.Foreground = new SolidColorBrush(palette.Text);
         foreach (var line in new[] { EarlierTranslation, PreviousTranslation, NextTranslation, LaterTranslation })
-        { line.Foreground = Brush.Parse(settings.TextColor); line.FontSize = System.Math.Max(12, settings.TranslationFontSize * .85); }
+        { line.Foreground = new SolidColorBrush(palette.Text); line.FontSize = System.Math.Max(12, settings.TranslationFontSize * .85); }
         foreach (var line in new[] { EarlierContext, PreviousContext, NextContext, LaterContext, SecondLyric })
-        { line.Foreground = Brush.Parse(settings.TextColor); line.FontSize = settings.FontSize * .78; }
+        { line.Foreground = new SolidColorBrush(palette.Text); line.FontSize = settings.FontSize * .78; }
         LyricsPanel.IsVisible = !reading;
         ReadingLayout.IsVisible = reading;
         ReadingLyric.AlignLeft = false;
@@ -213,11 +220,14 @@ public partial class MainWindow : Window
     private void ApplyBackdrop(bool force = false)
     {
         var settings = AppearancePreferences.Current;
-        RootBorder.Background = new SolidColorBrush(Color.Parse(settings.BackgroundColor), settings.BackgroundOpacity);
+        RootBorder.Background = new SolidColorBrush(Color.Parse(settings.BackgroundColor), LyricPalette.BackgroundOpacity(settings));
         TransparencyBackgroundFallback = new SolidColorBrush(Color.Parse(settings.BackgroundColor));
-        TransparencyLevelHint = settings.UseBlur
+        WindowTransparencyLevel[] levels = settings.UseBlur
             ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
             : [WindowTransparencyLevel.Transparent];
+        // Avalonia.Native 11.3 skips an already-active level when reapplying hints,
+        // potentially selecting Transparent next. Do not resend identical hints.
+        if (!TransparencyLevelHint.SequenceEqual(levels)) TransparencyLevelHint = levels;
         ApplyWindowsBackdrop();
         if (IsVisible) _hyprlandBackdrop.Apply(settings.UseBlur, Title ?? "", force);
     }
@@ -228,7 +238,7 @@ public partial class MainWindow : Window
         var blur = _windowsBackdrop.Apply(this, settings.UseBlur, settings.ThemeMode == "dark");
         // If the framework reports None, its opaque fallback would cover the
         // independently enabled DWM backdrop. Keep our tint on RootBorder only.
-        TransparencyBackgroundFallback = blur ? Brushes.Transparent : Brush.Parse(settings.BackgroundColor);
+        TransparencyBackgroundFallback = blur ? Brushes.Transparent : new SolidColorBrush(LyricPalette.Create(settings).Canvas);
     }
 
     private void LockButton_Click(object? sender, RoutedEventArgs e)
@@ -242,7 +252,7 @@ public partial class MainWindow : Window
     private void UpdateLockAction()
     {
         LockIcon.Data = (Geometry)Resources[IsLocked ? "lock_regular" : "unlock_regular"]!;
-        LockIcon.Foreground = (IBrush)Application.Current!.Resources[IsLocked ? "AccentBrush" : "LyricPrimary"]!;
+        LockIcon.Foreground = (IBrush)Application.Current!.Resources[IsLocked ? "LyricAccent" : "LyricPrimary"]!;
         Avalonia.Automation.AutomationProperties.SetName(LockAction, Localization.Get(IsLocked ? "UnlockWindow" : "LockWindow"));
     }
 

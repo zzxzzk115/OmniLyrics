@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
         <ProjectReference Include="..\OmniLyrics.Core\OmniLyrics.Core.csproj"/>
@@ -9,4 +9,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="Scripts/AppleEvents.js" />
+        <InternalsVisibleTo Include="MacBackendSmoke" />
+    </ItemGroup>
 </Project>

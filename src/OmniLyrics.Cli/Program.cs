@@ -3,7 +3,14 @@ using OmniLyrics.Backends.Dynamic;
 using OmniLyrics.Cli;
 
 if (await ConfigurationCommand.TryRunAsync(args)) return;
-try { await LyricsCliRunner.RunAsync(() => new DynamicBackend(), args); }
+try
+{
+    var options = OmniLyrics.Core.Cli.CliParser.Parse(args);
+    if (options.Control == ControlAction.None)
+        await OmniLyrics.Backends.Mac.MacEnvironment.CheckConsoleStartupAsync(
+            !Console.IsInputRedirected && !Console.IsOutputRedirected && options.Mode is not ("line" or "json"));
+    await LyricsCliRunner.RunAsync(() => new DynamicBackend(), args);
+}
 catch (ArgumentException error)
 {
     Console.Error.WriteLine(error.Message);

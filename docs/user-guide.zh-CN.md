@@ -9,11 +9,22 @@
 | 平台 | 连接方式 | 播放器 |
 | --- | --- | --- |
 | Windows | 系统媒体控制 SMTC | Spotify 等接入系统媒体会话的播放器 |
-| macOS | `media-control` | Apple Music、Spotify、Cider 等提供 Now Playing 信息的播放器 |
+| macOS | 原生 Apple Events | Apple Music 和 Spotify 桌面端 |
+| macOS | 可选 `media-control` | 其他提供 Now Playing 信息的播放器 |
 | Linux | MPRIS | Spotify 和其他 MPRIS 播放器 |
 | 三个平台 | 播放器专用 API | Cider V3+、YesPlayMusic |
 
-macOS 需先运行 `brew install media-control` 安装依赖。
+macOS 上 Apple Music 和 Spotify 通过系统自带的 `/usr/bin/osascript`（JavaScript for Automation）发送公开 Apple Events，无需额外安装。只读取已运行的播放器，不会自动启动播放器。首次使用时，请允许启动 OmniLyrics 的应用（例如终端）控制播放器。若拒绝过授权，请在「系统设置 → 隐私与安全性 → 自动化」中启用相应播放器，然后重启 OmniLyrics。当原生访问失败且没有其他可用连接时，歌词窗口会显示处理提示。
+
+macOS 的「设置 → macOS 环境」可检查原生访问、Homebrew 和 media-control 兼容性。每次启动 CLI/GUI 都会重新检查；两种连接均不可用时，交互界面会询问是否安装兜底工具，选择「暂不安装」不会阻止下次启动再次提示。line/JSON 模式及输入输出重定向时仅向标准错误输出恢复指引，不等待输入。只有用户确认后才执行安装，并显示 Homebrew 输出；支持取消并显示失败原因。没有 Homebrew 时提供官网安装入口。等待自动化授权不视为连接失败。显式设置 `OMNILYRICS_MEDIA_CONTROL=off` 时不会提示安装，因为安装不能启用已被关闭的后端。
+
+Apple Events 并非新 macOS 才支持；这里使用的 JXA 桥接从 [OS X 10.10](https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/) 起就已提供。当前 .NET 10 应用要求 [macOS 14 或更新版本](https://github.com/dotnet/core/blob/main/release-notes/10.0/supported-os.md)，安装 media-control 不能让不受支持的旧系统变为受支持。
+
+macOS 启用毛玻璃时，歌词背景层会自动使用 0% 不透明度，避免遮住 Avalonia 原有的原生模糊材质。文字提供局部描边/阴影保护，控件使用局部底色，工具栏其余区域保持透明；对比度过低的文字颜色会在显示时自动校正，但不改变已保存的配色。关闭毛玻璃后可重新调整背景不透明度。Apple Events 进度采用连续插值，小幅采样误差逐渐校正，避免逐字高亮突然前跳。
+
+Cider 继续使用 Web API。其他播放器可选运行 `brew install media-control` 安装兜底工具，程序会检查 PATH 和标准 Homebrew 位置。设置 `OMNILYRICS_MEDIA_CONTROL=off` 可关闭兜底，或将该变量设为工具的绝对路径。Apple Music / Spotify 原生连接及 Cider Web API 优先于同一播放器的系统媒体连接；可选连接缺失或失败不会阻止其他播放器运行。
+
+原生 Apple Music / Spotify 支持曲目信息、进度、播放／暂停、上一首／下一首与跳转；本次不新增原生队列或收藏能力。
 播放控制、队列与收藏取决于播放器提供的能力。支持收藏时才会显示收藏按钮，目前收藏适配使用 Cider V4 的资料库 API。
 
 ## 五种界面预设
