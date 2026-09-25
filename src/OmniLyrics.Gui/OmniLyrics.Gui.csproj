@@ -7,6 +7,11 @@
         <SelfContained>true</SelfContained>
     </PropertyGroup>
 
+    <ItemGroup>
+        <AvaloniaResource Include="Assets/app.ico"/>
+        <AvaloniaResource Include="Assets/logo.png"/>
+    </ItemGroup>
+
     <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
         <PublishSingleFile>true</PublishSingleFile>
     </PropertyGroup>
@@ -15,7 +20,10 @@
         <PackageReference Include="Avalonia" Version="11.3.9"/>
         <PackageReference Include="Avalonia.Desktop" Version="11.3.9"/>
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.9"/>
+        <PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.9"/>
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.9"/>
+        <!-- Security fix for Avalonia's transitive D-Bus dependency (GHSA-xrw6-gwf8-vvr9). -->
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3"/>
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.3.9">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>

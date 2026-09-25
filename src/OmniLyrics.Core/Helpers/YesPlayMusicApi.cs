@@ -1,5 +1,9 @@
 ﻿using System.Text.Json;
 
+using OmniLyrics.Core.Lyrics;
+using OmniLyrics.Core.Lyrics.Models;
+using Lyricify.Lyrics.Models;
+
 namespace OmniLyrics.Core.Helpers;
 
 /// <summary>
@@ -103,16 +107,16 @@ public class YesPlayMusicApi : IDisposable
     /// <summary>
     ///     Fetch raw LRC lyrics of the currently playing track.
     /// </summary>
-    public async Task<string?> TryGetLyricsAsync()
+    public async Task<string?> TryGetLyricsAsync(PlayerState? expected = null)
     {
-        long? id = await TryGetCurrentTrackIdAsync();
+        long? id = await TryGetCurrentTrackIdAsync(expected);
         if (id is null)
             return null;
 
         return await TryGetLyricsRawAsync(id.Value);
     }
 
-    private async Task<long?> TryGetCurrentTrackIdAsync()
+    private async Task<long?> TryGetCurrentTrackIdAsync(PlayerState? expected)
     {
         try
         {
@@ -125,6 +129,17 @@ public class YesPlayMusicApi : IDisposable
             if (json.RootElement.TryGetProperty("currentTrack", out var track) &&
                 track.TryGetProperty("id", out var id))
             {
+                if (expected != null)
+                {
+                    static string Norm(string? text) => (text ?? "").Trim().ToLowerInvariant();
+                    if (!track.TryGetProperty("name", out var name) || Norm(name.GetString()) != Norm(expected.Title)) return null;
+                    if (!track.TryGetProperty("ar", out var artists) || artists.ValueKind != JsonValueKind.Array) return null;
+                    var names = artists.EnumerateArray().Select(a => a.TryGetProperty("name", out var artist)
+                        ? Norm(artist.GetString()) : "").ToHashSet();
+                    if (!expected.Artists.All(a => names.Contains(Norm(a)))) return null;
+                    if (!string.IsNullOrEmpty(expected.Album) && (!track.TryGetProperty("al", out var album)
+                        || !album.TryGetProperty("name", out var albumName) || Norm(albumName.GetString()) != Norm(expected.Album))) return null;
+                }
                 return id.GetInt64();
             }
             return null;
@@ -133,6 +148,25 @@ public class YesPlayMusicApi : IDisposable
         {
             return null;
         }
+    }
+
+    public async Task<List<LyricsLine>?> TryGetLyricLinesAsync(PlayerState expected)
+    {
+        var id = await TryGetCurrentTrackIdAsync(expected);
+        if (id == null) return null;
+        try
+        {
+            using var response = await _lyric.GetAsync($"/lyric?id={id.Value}");
+            if (!response.IsSuccessStatusCode) return null;
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            string? Raw(string key) => json.RootElement.TryGetProperty(key, out var node)
+                && node.TryGetProperty("lyric", out var text) ? text.GetString() : null;
+            var raw = Raw("yrc");
+            if (string.IsNullOrWhiteSpace(raw)) raw = Raw("lrc");
+            return string.IsNullOrWhiteSpace(raw) ? null : LyricsService.AttachTranslation(
+                LyricsService.ParseLyrics(raw, LyricsRawTypes.Unknown), Raw("ytlrc") ?? Raw("tlyric"));
+        }
+        catch { return null; }
     }
 
     private async Task<string?> TryGetLyricsRawAsync(long trackId)

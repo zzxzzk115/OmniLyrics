@@ -1,0 +1,1 @@
+﻿& "$env:INNO_ROOT\ISCC.exe" "windows_installer.iss"

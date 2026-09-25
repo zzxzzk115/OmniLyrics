@@ -1,41 +1,42 @@
 ﻿using OmniLyrics.Core;
 using OmniLyrics.Core.Cli;
-using OmniLyrics.Web;
+using OmniLyrics.Core.Configuration;
+using System.Runtime.InteropServices;
 
 public static class LyricsCliRunner
 {
-    public static async Task RunAsync(IPlayerBackend backend, string[] args)
+    public static async Task RunAsync(Func<IPlayerBackend> createBackend, string[] args)
     {
         var opt = CliParser.Parse(args);
+        var saved = UserConfiguration.LoadServer();
+        var serverSettings = saved with {
+            ListenAddress = opt.ListenAddress ?? saved.ListenAddress,
+            ControlHost = opt.ControlHost ?? saved.ControlHost,
+            HttpPort = opt.HttpPort ?? saved.HttpPort,
+            UdpPort = opt.UdpPort ?? saved.UdpPort
+        };
+        UserConfiguration.ValidateServer(serverSettings);
 
         // Control mode -> send UDP command (do NOT initialize backends)
         if (opt.Control != ControlAction.None)
         {
-            await ControlSender.SendAsync(opt.ToCommandString());
+            await ControlSender.SendAsync(opt.ToCommandString(), serverSettings.ControlHost, serverSettings.UdpPort);
             return;
         }
 
-        // Normal Lyrics mode -> start backend + command server
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (s, e) =>
-        {
-            e.Cancel = true;
-            cts.Cancel();
-        };
+        using var cts = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancel = (_, e) => { e.Cancel = true; cts.Cancel(); };
+        Console.CancelKeyPress += cancel;
+        using var terminate = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGTERM,
+            signal => { signal.Cancel = true; cts.Cancel(); });
+        // The terminal view is TUI; line/JSON streams are CLI consumers.
+        var role = opt.Mode is "line" or "json" ? ServiceRole.Cli : ServiceRole.Tui;
+        await using var session = new SharedPlayerSession(createBackend, role, () => serverSettings);
+        var cli = CliFactory.Create(opt.Mode, session);
+        try { await cli.RunAsync(cts.Token); }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        finally { Console.CancelKeyPress -= cancel; }
 
-        // Create the CLI instance
-        var cli = CliFactory.Create(opt.Mode, backend);
-
-        // Start UDP control server
-        var server = new CommandServer(backend);
-        _ = server.StartAsync(cts.Token);
-
-        // Start WebAPI server
-        var webServer = new WebApiServer(backend, cli);
-        _ = webServer.StartAsync(cts.Token);
-
-        // Start lyrics UI
-        await cli.RunAsync(cts.Token);
     }
 }
 

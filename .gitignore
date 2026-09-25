@@ -16,3 +16,11 @@ launchSettings.json
 
 # Rider
 .idea/
+
+# Publish
+publish/
+Output/
+
+# Python integration checks
+__pycache__/
+*.pyc

@@ -1,21 +1,46 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:OmniLyrics.Gui.Models"
+        xmlns:controls="clr-namespace:OmniLyrics.Gui.Controls"
         x:Class="OmniLyrics.Gui.MainWindow"
+        Title="OmniLyrics · Lyrics"
         Width="800"
         Height="150"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
-        CanResize="False"
+        CanResize="True"
         Topmost="True"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
         x:DataType="models:LyricsViewModel">
 
-    <!-- 
+    <!--
         https://docs.avaloniaui.net/zh-Hans/docs/reference/controls/path-icon
         https://avaloniaui.github.io/icons.html
      -->
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="9" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource LyricHoverBackground}" /></Style>
+        <Style Selector="Button.mainPlay">
+            <Setter Property="Width" Value="44" /><Setter Property="Height" Value="44" />
+            <Setter Property="CornerRadius" Value="22" /><Setter Property="Background" Value="{DynamicResource LyricButtonBackground}" />
+        </Style>
+    </Window.Styles>
     <Window.Resources>
+        <StreamGeometry x:Key="heart_outline">M12 21L3 12C-3 6 6-2 12 5C18-2 27 6 21 12L12 21ZM12 18L19.5 10.5C23 7 18 1 13 7L12 8L11 7C6 1 1 7 4.5 10.5Z</StreamGeometry>
+        <StreamGeometry x:Key="heart_filled">M12 21L3 12C-3 6 6-2 12 5C18-2 27 6 21 12Z</StreamGeometry>
+        <StreamGeometry x:Key="lock_regular">M6 10V7a6 6 0 0 1 12 0v3h2v13H4V10h2zm2 0h8V7a4 4 0 0 0-8 0v3zm-2 2v9h12v-9H6zm5 3h2v4h-2v-4z</StreamGeometry>
+        <StreamGeometry x:Key="unlock_regular">M6 10V7a6 6 0 0 1 12 0h-2a4 4 0 0 0-8 0v3h12v13H4V10h2zm0 2v9h12v-9H6zm5 3h2v4h-2v-4z</StreamGeometry>
+        <StreamGeometry x:Key="settings_regular">M9.5 2h5l.6 3a7 7 0 0 1 1.4.8l2.9-1 2.5 4.4-2.3 2a7 7 0 0 1 0 1.6l2.3 2-2.5 4.4-2.9-1a7 7 0 0 1-1.4.8l-.6 3h-5l-.6-3a7 7 0 0 1-1.4-.8l-2.9 1-2.5-4.4 2.3-2a7 7 0 0 1 0-1.6l-2.3-2L4.6 4.8l2.9 1A7 7 0 0 1 8.9 5Z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z</StreamGeometry>
         <StreamGeometry x:Key="previous_regular">M3 20.25C3 20.6642 3.33579 21 3.75 21C4.16421 21 4.5 20.6642 4.5 20.25L4.5 3.75C4.5 3.33579 4.16422 3 3.75 3C3.33579 3 3 3.33579 3 3.75V20.25Z M18.2303 20.4748C19.3883 21.305 21 20.4774 21 19.0526L21 4.82961C21 3.44582 19.4698 2.60946 18.3051 3.35665L7.8354 10.073C6.79467 10.7407 6.75574 12.2477 7.76062 12.9682L18.2303 20.4748ZM19.5 19.0526C19.5 19.2561 19.2697 19.3743 19.1043 19.2557L8.63465 11.7492C8.4911 11.6463 8.49666 11.431 8.64534 11.3356L19.115 4.61919C19.2814 4.51245 19.5 4.63193 19.5 4.82961L19.5 19.0526Z</StreamGeometry>
         <StreamGeometry x:Key="play_regular">M13.7501344,8.41212026 L38.1671892,21.1169293 C39.7594652,21.9454306 40.3786269,23.9078584 39.5501255,25.5001344 C39.2420737,26.0921715 38.7592263,26.5750189 38.1671892,26.8830707 L13.7501344,39.5878797 C12.1578584,40.4163811 10.1954306,39.7972194 9.36692926,38.2049434 C9.12586301,37.7416442 9,37.2270724 9,36.704809 L9,11.295191 C9,9.50026556 10.4550746,8.045191 12.25,8.045191 C12.6976544,8.045191 13.1396577,8.13766178 13.5485655,8.31589049 L13.7501344,8.41212026 Z M12.5961849,10.629867 L12.4856981,10.5831892 C12.4099075,10.5581 12.3303482,10.545191 12.25,10.545191 C11.8357864,10.545191 11.5,10.8809774 11.5,11.295191 L11.5,36.704809 C11.5,36.8253313 11.5290453,36.9440787 11.584676,37.0509939 C11.7758686,37.4184422 12.2287365,37.5613256 12.5961849,37.370133 L37.0132397,24.665324 C37.1498636,24.5942351 37.2612899,24.4828088 37.3323788,24.3461849 C37.5235714,23.9787365 37.380688,23.5258686 37.0132397,23.334676 L12.5961849,10.629867 Z</StreamGeometry>
         <StreamGeometry x:Key="pause_regular">M17.75,7 C19.5449254,7 21,8.45507456 21,10.25 L21,37.75 C21,39.5449254 19.5449254,41 17.75,41 L12.25,41 C10.4550746,41 9,39.5449254 9,37.75 L9,10.25 C9,8.45507456 10.4550746,7 12.25,7 L17.75,7 Z M35.75,7 C37.5449254,7 39,8.45507456 39,10.25 L39,37.75 C39,39.5449254 37.5449254,41 35.75,41 L30.25,41 C28.4550746,41 27,39.5449254 27,37.75 L27,10.25 C27,8.45507456 28.4550746,7 30.25,7 L35.75,7 Z M17.75,9.5 L12.25,9.5 C11.8357864,9.5 11.5,9.83578644 11.5,10.25 L11.5,37.75 C11.5,38.1642136 11.8357864,38.5 12.25,38.5 L17.75,38.5 C18.1642136,38.5 18.5,38.1642136 18.5,37.75 L18.5,10.25 C18.5,9.83578644 18.1642136,9.5 17.75,9.5 Z M35.75,9.5 L30.25,9.5 C29.8357864,9.5 29.5,9.83578644 29.5,10.25 L29.5,37.75 C29.5,38.1642136 29.8357864,38.5 30.25,38.5 L35.75,38.5 C36.1642136,38.5 36.5,38.1642136 36.5,37.75 L36.5,10.25 C36.5,9.83578644 36.1642136,9.5 35.75,9.5 Z</StreamGeometry>
@@ -23,11 +48,8 @@
         <StreamGeometry x:Key="dismiss_regular">M3.52499419,3.71761187 L3.61611652,3.61611652 C4.0717282,3.16050485 4.79154862,3.13013074 5.28238813,3.52499419 L5.38388348,3.61611652 L14,12.233 L22.6161165,3.61611652 C23.1042719,3.12796116 23.8957281,3.12796116 24.3838835,3.61611652 C24.8720388,4.10427189 24.8720388,4.89572811 24.3838835,5.38388348 L15.767,14 L24.3838835,22.6161165 C24.8394952,23.0717282 24.8698693,23.7915486 24.4750058,24.2823881 L24.3838835,24.3838835 C23.9282718,24.8394952 23.2084514,24.8698693 22.7176119,24.4750058 L22.6161165,24.3838835 L14,15.767 L5.38388348,24.3838835 C4.89572811,24.8720388 4.10427189,24.8720388 3.61611652,24.3838835 C3.12796116,23.8957281 3.12796116,23.1042719 3.61611652,22.6161165 L12.233,14 L3.61611652,5.38388348 C3.16050485,4.9282718 3.13013074,4.20845138 3.52499419,3.71761187 L3.61611652,3.61611652 L3.52499419,3.71761187 Z</StreamGeometry>
     </Window.Resources>
 
-    <Window.DataContext>
-        <models:LyricsViewModel />
-    </Window.DataContext>
 
-    <Border x:Name="RootBorder"
+    <controls:ResponsiveBorder x:Name="RootBorder"
             Background="Transparent"
             Padding="10"
             PointerEntered="RootBorder_OnPointerEntered"
@@ -37,6 +59,7 @@
             <!-- Top overlay panel (title bar + toolbar), shown only when hovered -->
             <Grid x:Name="TopBar"
                   Background="Transparent"
+                  ZIndex="10" VerticalAlignment="Top"
                   RowDefinitions="Auto,Auto"
                   IsVisible="False">
 
@@ -47,15 +70,19 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <!-- <Image Source="/Assets/logo.png" -->
-                        <!--        Width="22" -->
-                        <!--        Height="22"/> -->
+                    <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True" Margin="0,0,12,0">
+                        <Image x:Name="AppLogo" Source="/Assets/logo.png" Width="22" Height="22"
+                               VerticalAlignment="Center" />
 
-                        <TextBlock x:Name="HeaderText"
+                        <controls:AlignedTextBlock x:Name="HeaderText"
                                    Text="{Binding DisplayTitle}"
-                                   FontSize="14"
-                                   Foreground="White" />
+                                   MaxWidth="280" TextTrimming="CharacterEllipsis"
+                                   FontSize="14" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource LyricPrimary}" />
+                        <controls:AlignedTextBlock x:Name="PlayerInformation" Text="{Binding ConnectionLabel}" FontSize="11"
+                                   MaxWidth="170" TextTrimming="CharacterEllipsis"
+
+                                   Foreground="{DynamicResource LyricSecondary}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Toolbar -->
@@ -65,81 +92,194 @@
                                 VerticalAlignment="Center">
 
 
+                        <Button Click="SettingsButton_Click"
+                                AutomationProperties.Name="{DynamicResource Settings}">
+                            <PathIcon Height="14" Width="14" Foreground="{DynamicResource LyricPrimary}"
+                                      Data="{StaticResource settings_regular}" />
+                        </Button>
+                        <Button x:Name="LockAction" Click="LockButton_Click"
+                                AutomationProperties.Name="{DynamicResource LockWindow}">
+                            <PathIcon x:Name="LockIcon" Height="14" Width="14" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource unlock_regular}" />
+                        </Button>
+
+                        <StackPanel x:Name="OverlayPlayback" Orientation="Horizontal" Spacing="8">
+                        <Button Click="FavoriteButton_Click" IsVisible="{Binding FavoriteAvailable}"
+                                IsEnabled="{Binding FavoriteEnabled}"
+                                AutomationProperties.Name="{Binding FavoriteLabel}">
+                            <Grid>
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                            </Grid>
+                        </Button>
+
                         <!-- Prev Button -->
-                        <Button Click="PrevButton_Click">
-                            <PathIcon Height="12" Width="12" Foreground="White"
+                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                            <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}">
+                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
                             <PathIcon
                                 Height="12"
                                 Width="12"
-                                Foreground="White"
+                                Foreground="{DynamicResource LyricPrimary}"
                                 Data="{StaticResource play_regular}" />
                         </Button>
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding Playing}">
+                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
                             <PathIcon
                                 Height="12"
                                 Width="12"
-                                Foreground="White"
+                                Foreground="{DynamicResource LyricPrimary}"
                                 Data="{StaticResource pause_regular}" />
                         </Button>
 
                         <!-- Next Button -->
-                        <Button Click="NextButton_Click">
-                            <PathIcon Height="12" Width="12" Foreground="White"
+                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                            <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource next_regular}" />
                         </Button>
 
+                        </StackPanel>
+
                         <!-- Close Button -->
-                        <Button Click="CloseButton_Click">
-                            <PathIcon Height="12" Width="12" Foreground="White"
+                        <Button Click="CloseButton_Click" AutomationProperties.Name="{DynamicResource Close}">
+                            <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource dismiss_regular}" />
                         </Button>
                     </StackPanel>
                 </Grid>
             </Grid>
 
-            <StackPanel
+            <StackPanel x:Name="LyricsPanel"
                 Orientation="Vertical"
                 Spacing="6"
                 Margin="0,10,0,0"
                 VerticalAlignment="Center"
-                HorizontalAlignment="Center">
+                HorizontalAlignment="Stretch">
                 <!-- Primary lyric line -->
-                <TextBlock x:Name="PrimaryLyric"
-                           Text="{Binding CurrentLine.Text}"
-                           FontSize="28"
-                           FontWeight="Bold"
-                           Foreground="#FFF9E9C8"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           TextAlignment="Center">
-                    <TextBlock.Effect>
-                        <DropShadowEffect BlurRadius="0"
-                                          Color="Black"
-                                          OffsetX="2"
-                                          OffsetY="2" />
-                    </TextBlock.Effect>
-                </TextBlock>
+                <controls:KaraokeLine x:Name="PrimaryLyric"
+                                      Line="{Binding CurrentLine}"
+                                      Position="{Binding Position}"
+                                      Approximate="{Binding Approximate}" LineEnd="{Binding LineEnd}"
 
+                                      FontSize="28"
+                                      Height="42"
+                                      HorizontalAlignment="Stretch"
+                                      AutomationProperties.Name="{Binding CurrentLine.Text}" />
+
+                <controls:AlignedTextBlock x:Name="ClassicTranslation" Text="{Binding Translation}" IsVisible="{Binding HasTranslation}"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <!-- Secondary lyric line -->
-                <TextBlock x:Name="SecondLyric"
+                <controls:AlignedTextBlock x:Name="SecondLyric"
                            Text="{Binding SecondaryLine.Text}"
                            FontSize="20"
-                           Foreground="#DDDDDDDD"
+                           Foreground="{DynamicResource LyricSecondary}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center">
-                    <TextBlock.Effect>
+                    <controls:AlignedTextBlock.Effect>
                         <DropShadowEffect BlurRadius="0"
                                           Color="Black"
                                           OffsetX="2"
                                           OffsetY="2" />
-                    </TextBlock.Effect>
-                </TextBlock>
+                    </controls:AlignedTextBlock.Effect>
+                </controls:AlignedTextBlock>
             </StackPanel>
+            <Grid x:Name="ReadingLayout" IsVisible="False" Margin="20,48,20,22"
+                  ColumnDefinitions="280,40,*" RowDefinitions="*" ClipToBounds="True">
+                <controls:SongInfoPanel x:Name="SongPanel" VerticalAlignment="Center">
+                    <Border x:Name="CoverFrame" CornerRadius="18" ClipToBounds="True"
+                            HorizontalAlignment="Stretch" Background="{DynamicResource CoverPlaceholder}">
+                        <Grid>
+                            <PathIcon Data="M8 4V16C2 14 1 24 7 23C11 22 11 19 11 17V8L20 6V14C14 12 13 22 19 21C23 20 23 17 23 15V1Z"
+                                      Width="56" Height="56" Foreground="{DynamicResource LyricMuted}" />
+                            <controls:PlayerArtwork Url="{Binding ArtworkUrl}" Stretch="UniformToFill" />
+                        </Grid>
+                    </Border>
+                    <StackPanel x:Name="SongMetadata" Spacing="10">
+                        <Grid x:Name="SongTitleRow" ColumnDefinitions="Auto,*">
+                            <Image x:Name="MetadataLogo" Source="/Assets/logo.png" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <controls:AlignedTextBlock Grid.Column="1" Text="{Binding Title}" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource LyricPrimary}"
+                                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <controls:AlignedTextBlock x:Name="SongArtist" Text="{Binding Artist}" FontSize="16" Foreground="{DynamicResource LyricSecondary}" TextTrimming="CharacterEllipsis" />
+                        <controls:AlignedTextBlock x:Name="MetadataPlayer" Text="{Binding ConnectionLabel}" FontSize="11" Foreground="{DynamicResource LyricMuted}" />
+                        <ProgressBar Value="{Binding Progress}" Height="3" Foreground="{DynamicResource LyricSecondary}" Background="{DynamicResource ProgressBackground}" Margin="0,14,0,0" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:AlignedTextBlock Text="{Binding ElapsedText}" FontSize="11" Foreground="{DynamicResource LyricMuted}" />
+                            <controls:AlignedTextBlock Text="{Binding DurationText}" Grid.Column="1" FontSize="11" Foreground="{DynamicResource LyricMuted}" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel x:Name="QuickPlayback" Orientation="Horizontal" Spacing="16">
+                        <Button Click="FavoriteButton_Click" IsVisible="{Binding FavoriteAvailable}"
+                                IsEnabled="{Binding FavoriteEnabled}"
+                                AutomationProperties.Name="{Binding FavoriteLabel}">
+                            <Grid>
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Prev Button -->
+                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                            <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
+                                      Data="{StaticResource previous_regular}" />
+                        </Button>
+
+                        <!-- Play/Pause Button -->
+                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <PathIcon
+                                Height="18"
+                                Width="18"
+                                Foreground="{DynamicResource LyricPrimary}"
+                                Data="{StaticResource play_regular}" />
+                        </Button>
+                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <PathIcon
+                                Height="18"
+                                Width="18"
+                                Foreground="{DynamicResource LyricPrimary}"
+                                Data="{StaticResource pause_regular}" />
+                        </Button>
+
+                        <!-- Next Button -->
+                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                            <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
+                                      Data="{StaticResource next_regular}" />
+                        </Button>
+
+                    </StackPanel>
+                </controls:SongInfoPanel>
+                <controls:CenteredLyricsPanel x:Name="ContextPanel" Grid.Column="2" ClipToBounds="True">
+                    <StackPanel Spacing="22" VerticalAlignment="Top" IsHitTestVisible="False">
+                        <StackPanel Spacing="5" Opacity="0.25">
+                            <controls:AlignedTextBlock x:Name="EarlierContext" Text="{Binding EarlierLine.Text}" TextWrapping="Wrap" MaxLines="2" />
+                            <controls:AlignedTextBlock x:Name="EarlierTranslation" Text="{Binding EarlierLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
+                        </StackPanel>
+                        <StackPanel Spacing="5" Opacity="0.48">
+                            <controls:AlignedTextBlock x:Name="PreviousContext" Text="{Binding PreviousLine.Text}" TextWrapping="Wrap" MaxLines="2" />
+                            <controls:AlignedTextBlock x:Name="PreviousTranslation" Text="{Binding PreviousLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Spacing="10" IsHitTestVisible="False">
+                        <controls:KaraokeLine x:Name="ReadingLyric" DrawShadow="False" Line="{Binding CurrentLine}" Position="{Binding Position}"
+                                              Approximate="{Binding Approximate}" LineEnd="{Binding LineEnd}"
+                                              Wrap="True" AlignLeft="False" MaxHeight="250" ClipToBounds="True" />
+                        <controls:AlignedTextBlock x:Name="ReadingTranslation" Text="{Binding Translation}" IsVisible="{Binding HasTranslation}"
+                                   TextWrapping="Wrap" MaxLines="3" Opacity="0.85" />
+                    </StackPanel>
+                    <StackPanel Spacing="22" IsHitTestVisible="False">
+                        <StackPanel Spacing="5" Opacity="0.48">
+                            <controls:AlignedTextBlock x:Name="NextContext" Text="{Binding SecondaryLine.Text}" TextWrapping="Wrap" MaxLines="2" />
+                            <controls:AlignedTextBlock x:Name="NextTranslation" Text="{Binding SecondaryLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
+                        </StackPanel>
+                        <StackPanel Spacing="5" Opacity="0.25">
+                            <controls:AlignedTextBlock x:Name="LaterContext" Text="{Binding LaterLine.Text}" TextWrapping="Wrap" MaxLines="2" />
+                            <controls:AlignedTextBlock x:Name="LaterTranslation" Text="{Binding LaterLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:CenteredLyricsPanel>
+            </Grid>
         </Grid>
-    </Border>
+    </controls:ResponsiveBorder>
 </Window>
