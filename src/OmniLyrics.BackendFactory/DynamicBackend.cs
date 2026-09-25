@@ -3,6 +3,7 @@ using OmniLyrics.Backends.Linux;
 using OmniLyrics.Backends.Mac;
 using OmniLyrics.Core;
 using OmniLyrics.Core.Configuration;
+using OmniLyrics.Core.Favorites;
 #if Windows
 using OmniLyrics.Backends.Windows;
 #endif
@@ -12,6 +13,8 @@ namespace OmniLyrics.Backends.Dynamic;
 public class DynamicBackend : BasePlayerBackend, IDisposable, IPlaybackQueueSource, ITrackFavorites, IPlayerBackendStatus
 {
     private readonly CiderFavorites _favorites = new();
+    private readonly SpotifyFavorites _spotifyFavorites = new();
+    private readonly YesPlayMusicFavorites _yesPlayMusicFavorites = new();
     private readonly Dictionary<string, IPlayerBackend> _backends;
 
     private readonly bool _mac;
@@ -68,7 +71,7 @@ public class DynamicBackend : BasePlayerBackend, IDisposable, IPlaybackQueueSour
                 try { backend.Dispose(); }
                 catch (Exception error) { Console.Error.WriteLine($"Player cleanup failed: {error.Message}"); }
         }
-        finally { _favorites.Dispose(); _cts.Dispose(); }
+        finally { _favorites.Dispose(); _spotifyFavorites.Dispose(); _yesPlayMusicFavorites.Dispose(); _cts.Dispose(); }
     }
 
     public string? ConnectionError => GetCurrentState() != null ? null :
@@ -214,7 +217,11 @@ public class DynamicBackend : BasePlayerBackend, IDisposable, IPlaybackQueueSour
     {
         var current = GetCurrentState();
         if (current == null || OmniLyrics.Core.Shared.LyricsCache.TrackKey(current) != OmniLyrics.Core.Shared.LyricsCache.TrackKey(expected)) return null;
-        return current.SourceApp?.Contains("cider", StringComparison.OrdinalIgnoreCase) == true ? _favorites : _current as ITrackFavorites;
+        var source = current.SourceApp ?? "";
+        if (source.Contains("cider", StringComparison.OrdinalIgnoreCase)) return _favorites;
+        if (source.Contains("spotify", StringComparison.OrdinalIgnoreCase)) return _spotifyFavorites;
+        if (source.Contains("yesplaymusic", StringComparison.OrdinalIgnoreCase)) return _yesPlayMusicFavorites;
+        return _current as ITrackFavorites;
     }
 
     public Task<FavoriteState?> GetFavoriteAsync(PlayerState expected, CancellationToken token = default) =>

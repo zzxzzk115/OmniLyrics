@@ -16,7 +16,7 @@ public sealed record AppearanceSettings(string Preset, bool Locked, bool ShowLog
     bool UseBlur = true, string ThemeMode = "dark", string AccentColor = "#FA586A", double? UiScale = null);
 
 /// <summary>Shared by all frontends. Credentials are separate from ordinary settings.</summary>
-public static class UserConfiguration
+public static partial class UserConfiguration
 {
     public static string DirectoryPath
     {
@@ -325,7 +325,7 @@ public static class UserConfiguration
             throw new InvalidDataException("Unsupported configuration version.");
         var language = root["language"]?.GetValue<string>() ?? "auto";
         if (language is not ("auto" or "en" or "zh-CN")) throw new InvalidDataException("Unknown language.");
-        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root);
+        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root); ParseSpotifyClientId(root);
         var server = root["server"];
         ValidateServer(new(server?["listenAddress"]?.GetValue<string>() ?? "127.0.0.1",
             server?["httpPort"]?.GetValue<int>() ?? 27270, server?["udpPort"]?.GetValue<int>() ?? 32651,

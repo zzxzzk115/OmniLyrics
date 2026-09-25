@@ -442,7 +442,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem x:Name="PlayerConnectionsTab" Tag="PlayerConnections CiderOptions Integration TokenMode NoTokenMode FavoritesAccess token 收藏">
+                <TabItem x:Name="PlayerConnectionsTab" Tag="PlayerConnections CiderOptions Integration TokenMode NoTokenMode FavoritesAccess Spotify Apple Music YesPlayMusic Client ID QR token 收藏 授权 二维码">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <PathIcon Classes="navIcon" Width="17" Height="17" Data="M7 2h2v6h6V2h2v6h3v3a8 8 0 0 1-7 8v4h-2v-4a8 8 0 0 1-7-8V8h3zm-1 8v1a6 6 0 0 0 12 0v-1z"/>
@@ -470,6 +470,41 @@
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                                         <Button Classes="action" x:Name="TestButton" Content="{DynamicResource TestCider}" Click="TestButton_Click"/>
                                     </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card" x:Name="AppleMusicFavoritesCard" IsVisible="False">
+                                <StackPanel Spacing="12" Margin="0,16">
+                                    <TextBlock Text="Apple Music" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource AppleMusicFavoritesHint}" Classes="hint"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,16">
+                                    <TextBlock Text="Spotify" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource SpotifyFavoritesHint}" Classes="hint"/>
+                                    <TextBlock Text="Client ID"/>
+                                    <TextBox x:Name="SpotifyClientIdInput" MaxLength="256" Watermark="Spotify Client ID"/>
+                                    <TextBlock Text="{DynamicResource SpotifyRedirectHint}" Classes="hint"/>
+                                    <SelectableTextBlock Text="http://127.0.0.1/spotify/callback" FontSize="12" TextWrapping="Wrap"/>
+                                    <WrapPanel>
+                                        <Button Classes="action" x:Name="SpotifySignInButton" Content="{DynamicResource AuthorizeSpotify}" Click="SpotifySignIn_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="SpotifyCancelButton" IsVisible="False" Content="{DynamicResource Cancel}" Click="SpotifyCancel_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" Content="{DynamicResource DisconnectAccount}" Click="SpotifyDisconnect_Click" Margin="0,0,10,8"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="SpotifyLoginStatus" Classes="hint"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,16">
+                                    <TextBlock Text="YesPlayMusic" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource YesPlayMusicFavoritesHint}" Classes="hint"/>
+                                    <Image x:Name="YesPlayMusicQr" IsVisible="False" Width="200" Height="200" HorizontalAlignment="Left"/>
+                                    <WrapPanel>
+                                        <Button Classes="action" x:Name="YesPlayMusicSignInButton" Content="{DynamicResource AuthorizeYesPlayMusic}" Click="YesPlayMusicSignIn_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="YesPlayMusicCancelButton" IsVisible="False" Content="{DynamicResource Cancel}" Click="YesPlayMusicCancel_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" Content="{DynamicResource DisconnectAccount}" Click="YesPlayMusicDisconnect_Click" Margin="0,0,10,8"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="YesPlayMusicLoginStatus" Classes="hint"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

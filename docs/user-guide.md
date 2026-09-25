@@ -25,13 +25,28 @@ With macOS blur enabled, the lyric background layer automatically uses 0% opacit
 
 Cider continues to use its Web API. For other players, optionally install `media-control` with `brew install media-control`. OmniLyrics checks PATH and the standard Homebrew locations. Set `OMNILYRICS_MEDIA_CONTROL=off` to disable this fallback, or set it to the executable's absolute path. Apple Music / Spotify native connections and Cider's Web API take precedence over a duplicate system-media connection. Missing or failed optional connections do not prevent other players from working.
 
-Native Apple Music / Spotify support covers metadata, playback position, play/pause, previous/next and seek. It does not add native queue or favorite support.
-Playback, queue access and favorites depend on the connected player's capabilities.
-The favorite button appears only when supported; the current adapter uses Cider V4's library API.
+Native Apple Music / Spotify support covers metadata, playback position, play/pause, previous/next and seek. Native queues are not integrated.
+
+## Favorites and account access
+
+| Player | Favorite connection | Setup |
+| --- | --- | --- |
+| Apple Music on macOS | Native Apple Events | Allow Automation access to Music; no extra account sign-in |
+| Spotify desktop | Spotify Web API | Settings → Player connections → Spotify: enter your developer app Client ID and authorize in the browser |
+| YesPlayMusic desktop | Bundled local NetEase API | Keep YesPlayMusic running, then scan the QR code in Player connections with NetEase Cloud Music using the same account as the player |
+| Cider | V4 library API | Enable library permission when API token authentication is required |
+
+Buttons appear only after the connected player reports a matching song and readable favorite state. Writes use explicit song IDs where supported, reject stale state after a track change, and wait for a confirmed readback. An unavailable or rejected API does not display a successful favorite. The shared `/favorites` endpoint uses these same adapters.
+
+Spotify uses [Authorization Code with PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow); a Client Secret is not needed. Register **`http://127.0.0.1/spotify/callback`** without a port in the Spotify developer dashboard. A temporary loopback port is selected for each sign-in, as supported by Spotify's [redirect URI rules](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri). Authorization requests only `user-library-read`, `user-library-modify`, and `user-read-currently-playing`. Spotify development-mode account restrictions still apply; check the [current developer requirements](https://developer.spotify.com/documentation/web-api/concepts/quota-modes). The authorized account's currently playing song must match the desktop player's song. Spotify favorites use the current `/me/library` endpoints; they do not require Spotify's desktop scripting interface to expose library controls.
+
+YesPlayMusic authorization is separate from the player's browser session. Its existing local endpoints on ports 27232 and 10754 must be available. Cancelling or closing settings stops sign-in. **Remove saved authorization** clears OmniLyrics' local authorization; it does not sign the player out. Spotify refresh tokens and the NetEase session cookie are kept in separate private files in the configuration directory (owner-only permissions on macOS/Linux), excluded from exported settings. Do not share these credential files.
 
 ## Layouts and appearance
 
 In **Settings → General → Interface scale**, the default follows the current monitor. Choose 100–200% or a custom 75–300% scale to override it for all windows, immediately. This does not change your saved lyric font sizes. In the configuration file, `appearance.uiScale` is `null` for system scaling or a factor such as `1.5` for 150%.
+
+The native tray menu provides scale, layout, dark/light theme, blur, translation and text-size shortcuts. If a large scale moves settings outside the screen, choose **Restore 100% scale and settings window** to reset scale and bring the complete settings window onto the monitor. This menu is independent of OmniLyrics' interface scale.
 
 Choose a layout under **Settings → Appearance**, then click **Apply**.
 

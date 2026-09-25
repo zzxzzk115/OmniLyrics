@@ -46,6 +46,14 @@ Download and Install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/downlo
 > brew install media-control
 > ```
 
+macOS GUI builds also include an `OmniLyrics.app.zip` artifact for Finder, alongside the portable executable. The application menu, Dock name and About item use OmniLyrics. The app bundle is ad-hoc signed, not Developer ID notarized. To package a local publish:
+
+```bash
+bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
+```
+
+Favorites support Apple Music (native on macOS), Spotify (configurable browser authorization), YesPlayMusic (QR authorization), and Cider. See [account setup](./docs/user-guide.md#favorites-and-account-access). Tray shortcuts include an emergency 100% scale reset and settings-window recovery.
+
 Clone:
 
 ```bash

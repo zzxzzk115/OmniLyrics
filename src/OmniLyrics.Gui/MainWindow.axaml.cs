@@ -8,6 +8,7 @@ using OmniLyrics.Core;
 using Avalonia.VisualTree;
 using Avalonia.LogicalTree;
 using System.Linq;
+using Avalonia.Threading;
 using OmniLyrics.Gui.Utils;
 
 namespace OmniLyrics.Gui;
@@ -16,6 +17,8 @@ public partial class MainWindow : Window
 {
     private readonly WindowScale _windowScale;
     private bool _hovered;
+    private readonly System.Func<bool?> _pointerIsOverWindow;
+    private readonly DispatcherTimer _overlayHideTimer = new() { Interval = System.TimeSpan.FromMilliseconds(300) };
     private string? _appliedPreset;
     private Size? _pendingPresetSize;
     private WindowEdge? _resizeEdge;
@@ -23,9 +26,22 @@ public partial class MainWindow : Window
     private readonly HyprlandBackdrop _hyprlandBackdrop = new();
     public bool IsLocked => AppearancePreferences.Current.Locked;
     public MainWindow() : this(new LyricsViewModel()) { }
-    public MainWindow(LyricsViewModel viewModel)
+    public MainWindow(LyricsViewModel viewModel) : this(viewModel, null) { }
+    internal MainWindow(LyricsViewModel viewModel, System.Func<bool?>? pointerIsOverWindow)
     {
         InitializeComponent();
+        _pointerIsOverWindow = pointerIsOverWindow ?? (() => MacWindowPointer.IsOver(this));
+        _overlayHideTimer.Tick += (_, _) =>
+        {
+            if (!ShouldShowOverlay && _pointerIsOverWindow() == true)
+            {
+                // A native move can leave hover stale until the next real motion.
+                // Keep checking until it leaves; do not latch a synthetic hover.
+                return;
+            }
+            _overlayHideTimer.Stop();
+            SetOverlayVisible(ShouldShowOverlay);
+        };
         _windowScale = new WindowScale(this, size => ClientSize = size);
         foreach (var button in this.GetLogicalDescendants().OfType<Button>())
             button.PropertyChanged += (_, e) =>
@@ -48,10 +64,20 @@ public partial class MainWindow : Window
         Closed += (_, _) => AppearancePreferences.Changed -= ApplyAppearance;
         Closed += (_, _) => Localization.Changed -= RefreshLockAction;
         Closed += (_, _) => _hyprlandBackdrop.Dispose();
+        Closed += (_, _) => _overlayHideTimer.Stop();
         Opened += (_, _) => ApplyBackdrop(force: true);
         PropertyChanged += (_, e) =>
         {
-            if (e.Property == IsVisibleProperty && IsVisible) ApplyBackdrop(force: true);
+            if (e.Property == IsVisibleProperty)
+            {
+                if (IsVisible) ApplyBackdrop(force: true);
+                else
+                {
+                    _hovered = false;
+                    _overlayHideTimer.Stop();
+                    SetOverlayVisible(false);
+                }
+            }
             if (e.Property == ActualTransparencyLevelProperty)
                 ApplyWindowsBackdrop();
         };
@@ -207,9 +233,26 @@ public partial class MainWindow : Window
         QuickPlayback.HorizontalAlignment = vertical || fullscreen ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Center;
     }
 
+    private bool ShouldShowOverlay => _hovered || TopBar.GetVisualDescendants().OfType<Button>().Any(button => button.IsPressed);
+
     private void UpdateOverlay()
     {
-        var show = _hovered || TopBar.GetVisualDescendants().OfType<Button>().Any(button => button.IsPressed);
+        if (ShouldShowOverlay)
+        {
+            _overlayHideTimer.Stop();
+            SetOverlayVisible(true);
+        }
+        else if (TopBar.Opacity > 0 && !_overlayHideTimer.IsEnabled)
+        {
+            // Native dragging emits transient exits, with re-entry sometimes
+            // delayed until after release. Coalesce those exits so the controls
+            // do not flash. Entry and button presses remain immediate.
+            _overlayHideTimer.Start();
+        }
+    }
+
+    private void SetOverlayVisible(bool show)
+    {
         // Keep the buttons arranged while hidden. Removing/reinserting them makes
         // the compositor's hit-test scene lag behind fast pointer-entry clicks.
         TopBar.Opacity = show ? 1 : 0;

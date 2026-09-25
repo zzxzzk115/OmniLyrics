@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 using OmniLyrics.Backends.Mac;
 using Avalonia.Media;
@@ -27,6 +28,8 @@ void Check(string name, bool value)
     if (!value) throw new Exception(name);
     Console.WriteLine("PASS " + name);
 }
+Check("Native application identity is OmniLyrics", Application.Current?.Name == "OmniLyrics");
+Check("The application menu contains About OmniLyrics", NativeMenu.GetMenu(Application.Current!)?.Items.OfType<NativeMenuItem>().Any(item => item.Header?.ToString() == Localization.Get("AboutOmniLyrics")) == true);
 if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
 {
     var window = new Window { Width = 400, Height = 250, Background = Brushes.Transparent,
@@ -69,10 +72,10 @@ if (OperatingSystem.IsMacOS())
 }
 // Exercise the same layout transform on both native desktop backends.
 var settings = new SettingsWindow(); settings.Show();
-void Pump()
+void Pump(int milliseconds = 250)
 {
     var frame = new DispatcherFrame();
-    using var timer = DispatcherTimer.RunOnce(() => frame.Continue = false, TimeSpan.FromMilliseconds(250));
+    using var timer = DispatcherTimer.RunOnce(() => frame.Continue = false, TimeSpan.FromMilliseconds(milliseconds));
     Dispatcher.UIThread.PushFrame(frame);
 }
 Pump();
@@ -115,7 +118,8 @@ if (OperatingSystem.IsMacOS())
     Check("Re-enabling blur clears its covering background layer", opacity.Value == 0 && !opacity.IsEnabled);
     var original = AppearancePreferences.Current;
     using var model = new LyricsViewModel(new DesktopSession(() => new IdleBackend(), () => new Uri("http://127.0.0.1:1/")), new LyricsManager());
-    var lyrics = new MainWindow(model); lyrics.Show(); Pump();
+    var pointerOverWindow = false;
+    var lyrics = new MainWindow(model, () => pointerOverWindow); lyrics.Show(); Pump();
     Console.WriteLine("Actual native transparency: " + lyrics.ActualTransparencyLevel);
     Check("macOS reports real native Blur", lyrics.ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur);
     var effect = Native.FindBlur(lyrics.TryGetPlatformHandle()!.Handle);
@@ -150,7 +154,56 @@ if (OperatingSystem.IsMacOS())
         Check($"{mode} karaoke and secondary text keep their local contrast protection", lyrics.FindControl<KaraokeLine>("PrimaryLyric")!.DrawShadow
             && lyrics.FindControl<AlignedTextBlock>("SecondLyric")!.Effect is DropShadowEffect { Opacity: 1 });
     }
-    AppearancePreferences.Save(original); lyrics.Hide();
+    AppearancePreferences.Save(original);
+    var root = lyrics.FindControl<Control>("RootBorder")!;
+    var toolbar = lyrics.FindControl<Control>("TopBar")!;
+    using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+    void Hover(bool inside) => root.RaiseEvent(new PointerEventArgs(
+        inside ? InputElement.PointerEnteredEvent : InputElement.PointerExitedEvent,
+        root, pointer, lyrics, inside ? new Point(50, 50) : new Point(-1, -1), 0,
+        PointerPointProperties.None, KeyModifiers.None));
+    var hides = 0;
+    toolbar.PropertyChanged += (_, e) => { if (e.Property == Visual.OpacityProperty && toolbar.Opacity == 0) hides++; };
+    Hover(true);
+    for (var i = 0; i < 5; i++) { Hover(false); Pump(25); Hover(true); Pump(25); }
+    // AppKit can deliver the final re-entry noticeably after the mouse release.
+    Hover(false); Pump(200); Hover(true); Pump(350);
+    Check("Native drag hover churn never hides the toolbar between exits and re-entries", hides == 0 && toolbar.Opacity == 1);
+    pointerOverWindow = true;
+    Hover(false); Pump(700);
+    Check("Stale native hover after dragging keeps controls visible while the cursor is inside", toolbar.Opacity == 1 && toolbar.IsHitTestVisible);
+    pointerOverWindow = false; Pump(400);
+    Check("Native pointer checks also hide controls when no re-entry event arrives", toolbar.Opacity == 0 && !toolbar.IsHitTestVisible);
+    Hover(true);
+    Hover(false); Pump(400);
+    Check("A sustained pointer exit hides and disables the toolbar", toolbar.Opacity == 0 && !toolbar.IsHitTestVisible && !toolbar.IsEnabled);
+    Hover(true);
+    Check("Pointer re-entry immediately restores toolbar interaction", toolbar.Opacity == 1 && toolbar.IsHitTestVisible && toolbar.IsEnabled);
+    Hover(false); lyrics.Hide();
+    Check("Hiding the window cancels pending hover state", toolbar.Opacity == 0 && !toolbar.IsHitTestVisible);
+    lyrics.Show(); Pump(50); Hover(true); Pump(400);
+    Check("A previous hide request cannot hide a reopened hovered window", toolbar.Opacity == 1 && toolbar.IsHitTestVisible);
+    var tray = new TrayViewModel(lyrics, settings, new Avalonia.Controls.ApplicationLifetimes.ClassicDesktopStyleApplicationLifetime());
+    var app = Application.Current!;
+    app.DataContext = tray;
+    tray.Scale200Command.Execute(null); Pump();
+    Check("Tray scaling applies immediately and marks its current choice", AppearancePreferences.Current.UiScale == 2 && tray.Scale200Text.StartsWith("✓"));
+    settings.Position = new PixelPoint(-20000, -20000);
+    tray.RecoverInterfaceCommand.Execute(null); Pump();
+    var screen = settings.Screens.ScreenFromWindow(settings)!;
+    var frameSize = PixelSize.FromSize(settings.FrameSize ?? settings.ClientSize, settings.RenderScaling);
+    Check("Tray recovery restores 100 percent without needing the settings controls", AppearancePreferences.Current.UiScale == 1 && settings.IsVisible);
+    Check("Tray recovery returns the complete settings window to the monitor", screen.WorkingArea.Contains(settings.Position)
+        && settings.Position.X + frameSize.Width <= screen.WorkingArea.Right
+        && settings.Position.Y + frameSize.Height <= screen.WorkingArea.Bottom);
+    var menu = TrayIcon.GetIcons(app)![0].Menu!;
+    var recovery = menu.Items.OfType<NativeMenuItem>().Single(item => item.Command == tray.RecoverInterfaceCommand);
+    Check("The native tray exposes recovery at the top level independently of app scale", recovery.Header == Localization.Get("RecoverInterface"));
+    tray.CompactCommand.Execute(null); tray.LightCommand.Execute(null); tray.TranslationCommand.Execute(null); Pump();
+    Check("Tray common settings update layout, theme and translation", AppearancePreferences.Current.Preset == "compact"
+        && AppearancePreferences.Current.ThemeMode == "light" && AppearancePreferences.Current.ShowTranslation != original.ShowTranslation);
+    AppearancePreferences.Save(original); app.DataContext = null;
+    lyrics.Hide();
 }
 settings.Close();
 if (Directory.Exists(config)) Directory.Delete(config, true);

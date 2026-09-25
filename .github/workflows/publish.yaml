@@ -147,6 +147,20 @@ jobs:
             }
           }
 
+      - name: Package the macOS application
+        if: runner.os == 'macOS' && matrix.projectName == 'gui'
+        shell: bash
+        run: |
+          version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
+          bash build/macos/package.sh "publish/${{ matrix.rid }}/gui/OmniLyrics.Gui" "packages/${{ matrix.rid }}" "$version"
+
+      - name: Upload macOS application
+        if: runner.os == 'macOS' && matrix.projectName == 'gui'
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnilyrics-gui-${{ matrix.rid }}-app
+          path: packages/${{ matrix.rid }}/OmniLyrics.app.zip
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -163,6 +177,10 @@ jobs:
           dotnet-version: 10.0.x
       - name: Install virtual display dependencies
         run: sudo apt-get update && sudo apt-get install -y xvfb openbox fonts-noto-cjk
+      - name: Verify favorites and authorization without real accounts
+        run: |
+          dotnet run --project tests/FavoritesSmoke -c Release
+          node tests/apple-events-favorites.test.cjs
       - name: Check compositor command isolation
         run: dotnet run --project tests/BackdropSmoke -c Release
       - name: Exercise native UI on a private display

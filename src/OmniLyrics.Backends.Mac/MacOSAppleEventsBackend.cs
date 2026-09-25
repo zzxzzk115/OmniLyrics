@@ -5,7 +5,7 @@ using OmniLyrics.Core;
 namespace OmniLyrics.Backends.Mac;
 
 /// <summary>Apple Music / Spotify via the system Apple Events bridge, without Homebrew.</summary>
-public sealed class MacOSAppleEventsBackend : BasePlayerBackend, IDisposable, IPlayerBackendStatus
+public sealed class MacOSAppleEventsBackend : BasePlayerBackend, IDisposable, IPlayerBackendStatus, ITrackFavorites
 {
     public const string MusicBundle = "com.apple.Music";
     public const string SpotifyBundle = "com.spotify.client";
@@ -158,6 +158,34 @@ public sealed class MacOSAppleEventsBackend : BasePlayerBackend, IDisposable, IP
             if (_state != null) _state.Position = position;
             _clock.Update(position, _state?.Playing == true, reset: true);
         }
+    }
+
+    public Task<FavoriteState?> GetFavoriteAsync(PlayerState expected, CancellationToken token = default) =>
+        FavoriteAsync(expected, null, false, token);
+    public Task<FavoriteState?> SetFavoriteAsync(PlayerState expected, FavoriteState previous, bool favorite, CancellationToken token = default) =>
+        FavoriteAsync(expected, previous, favorite, token);
+    private async Task<FavoriteState?> FavoriteAsync(PlayerState expected, FavoriteState? previous, bool favorite, CancellationToken token)
+    {
+        if (_disposed || _bundle != MusicBundle) return null;
+        var key = OmniLyrics.Core.Shared.LyricsCache.TrackKey(expected);
+        if (previous != null && previous.MediaKey != key) return null;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _cts?.Token ?? default);
+        try
+        {
+            var payload = JsonSerializer.Serialize(new { title = expected.Title, artist = string.Join(", ", expected.Artists),
+                album = expected.Album, duration = expected.Duration.TotalSeconds, targetId = previous?.TrackId, favorite });
+            var output = await MacProcess.CaptureAsync(Command(previous == null ? "favorite-get" : "favorite-set", payload),
+                linked.Token, TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+            using var json = JsonDocument.Parse(output);
+            var root = json.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return null;
+            var id = root.GetProperty("id").GetString();
+            var value = root.GetProperty("favorite").GetBoolean();
+            if (string.IsNullOrEmpty(id) || previous != null && (id != previous.TrackId || value != favorite)) return null;
+            return new(id, key, value);
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or JsonException or KeyNotFoundException
+            or OperationCanceledException or System.ComponentModel.Win32Exception) { return null; }
     }
 
     public void Dispose()

@@ -46,6 +46,14 @@ Linux Waybar（单行模式，--mode line）：
 > brew install media-control
 > ```
 
+macOS GUI 构建会在便携单文件之外提供 `OmniLyrics.app.zip`，便于通过 Finder 启动；菜单、Dock 与“关于”均显示 OmniLyrics。应用包使用临时签名，尚无 Developer ID 公证。可为本地发布结果打包：
+
+```bash
+bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
+```
+
+收藏支持 Apple Music（macOS 原生）、Spotify（可配置的浏览器授权）、YesPlayMusic（扫码授权）和 Cider，详见[账号配置](./docs/user-guide.zh-CN.md#收藏与账号授权)。托盘快捷菜单可恢复 100% 缩放并找回设置窗口。
+
 克隆仓库：
 
 ```bash

@@ -19,6 +19,24 @@ async Task Until(Func<bool> predicate, int milliseconds = 5000)
 PlayerState Song(string source, bool playing = true) => new()
 { SourceApp = source, Title = source + " song", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromMinutes(3), Playing = playing };
 
+if (args.Contains("--live-apple-music-favorites-read") || args.Contains("--live-apple-music-favorites-same-value"))
+{
+    using var favoriteMusic = new MacOSAppleEventsBackend(MacOSAppleEventsBackend.MusicBundle);
+    await favoriteMusic.StartAsync(default);
+    await Until(() => favoriteMusic.GetCurrentState() != null, 15000);
+    var state = favoriteMusic.GetCurrentState()!;
+    var snapshot = await favoriteMusic.GetFavoriteAsync(state);
+    Check("Live native Apple Music exposes favorite status without writing", snapshot != null);
+    if (args.Contains("--live-apple-music-favorites-same-value"))
+    {
+        // Do not favorite a song or trigger Music's add-favorites-to-library setting.
+        if (snapshot!.IsFavorite) throw new Exception("This probe requires an already unfavorited track; no write was made.");
+        Check("Live native Apple Music accepts and confirms an unchanged false favorite value",
+            await favoriteMusic.SetFavoriteAsync(state, snapshot, false) is { IsFavorite: false });
+    }
+    return;
+}
+
 if (args.Contains("--live-apple-music"))
 {
     if (!OperatingSystem.IsMacOS()) throw new Exception("Live test requires macOS and a selected Apple Music song.");

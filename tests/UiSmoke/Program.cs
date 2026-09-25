@@ -124,7 +124,7 @@ var manager = new LyricsManager((_, _) => Task.FromResult<List<LyricsLine>?>(lin
 manager.UpdateAsync(fake.State, true).GetAwaiter().GetResult();
 fake.Available = false;
 using var vm = new LyricsViewModel(new DesktopSession(() => fake, () => new Uri("http://127.0.0.1:1/")), manager);
-var window = new MainWindow(vm);
+var window = new MainWindow(vm, () => false);
 Check("No player starts with a localized message", vm.CurrentLine.Text == "No song is playing");
 fake.Available = true;
 Check("Floating lyric buttons have no tooltips and keep accessible names",
@@ -513,6 +513,7 @@ foreach (var preset in new[] { "classic", "compact", "focus", "portrait", "fulls
         Check(preset + " keeps the toolbar present until a pressed button finishes", window.FindControl<Control>("TopBar")!.IsHitTestVisible);
     });
     Check(preset + " lock click completes despite a hover exit", window.IsLocked);
+    Until(() => !window.FindControl<Control>("TopBar")!.IsHitTestVisible);
     Check(preset + " toolbar hides again after release", !window.FindControl<Control>("TopBar")!.IsHitTestVisible);
     root.RaiseEvent(new PointerEventArgs(InputElement.PointerEnteredEvent, root, hover, window, new Point(50, 50), 0, PointerPointProperties.None, KeyModifiers.None));
     next = fake.Next;

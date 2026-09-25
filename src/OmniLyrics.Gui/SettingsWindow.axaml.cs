@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
     private double _solidBackgroundOpacity = 60;
     private AppearanceSettings? _lastWindowState;
     private readonly ConfigurationWatcher _watcher;
+    private readonly WindowScale _windowScale;
     private CiderConnectionSettings? _loadedCider;
     private bool _settingPalette;
     private sealed record ThemeOption(string Label, ThemePalette? Palette = null, string? SavedName = null)
@@ -33,12 +34,13 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         InitializeMacEnvironment();
+        InitializeFavorites();
         BlurMode.PropertyChanged += (_, change) =>
         {
             if (change.Property == Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty && !_reloading)
                 UpdateBlurOptions();
         };
-        _ = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
+        _windowScale = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
         if (OperatingSystem.IsLinux())
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dialog);
         Deactivated += (_, _) => ReleaseSearchFocus();
@@ -72,6 +74,20 @@ public partial class SettingsWindow : Window
         };
         ReloadSettings();
     }
+
+    internal void RecoverWindowPlacement()
+    {
+        WindowState = WindowState.Normal;
+        _windowScale.SetSize(new Avalonia.Size(980, 760));
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen == null) return;
+        var work = screen.WorkingArea;
+        var size = Avalonia.PixelSize.FromSize(FrameSize ?? ClientSize, RenderScaling);
+        Position = new Avalonia.PixelPoint(work.X + Math.Max(0, (work.Width - size.Width) / 2),
+            work.Y + Math.Max(0, (work.Height - size.Height) / 2));
+    }
+
+    internal void OpenAbout() { SettingsSearch.Text = ""; SettingsTabs.SelectedItem = AboutTab; }
 
     private void ReloadSettings(bool preserveToken = false)
     {
@@ -123,6 +139,7 @@ public partial class SettingsWindow : Window
             IntegrationMode.SelectedIndex = settings.Integration switch { "webapi" => 1, "mpris" => 2, _ => 0 };
             NoTokenMode.IsChecked = TokenMode.IsChecked != true;
             UpdateTokenHint();
+            ReloadFavorites(preserveToken);
         }
         catch
         {
@@ -279,6 +296,7 @@ public partial class SettingsWindow : Window
                 PreferredLyricSourceMode.SelectedIndex == 1 ? "netease" : "qq");
             UserConfiguration.SavePreferences(appearance, lyrics,
                 changedCider ? cider : null, changedCider && cider.Authentication == "token" ? TokenInput.Text : null);
+            if (SpotifyClientIdInput.Text != _loadedSpotifyClientId) UserConfiguration.SaveSpotifyClientId(SpotifyClientIdInput.Text ?? "");
             _watcher.AcceptCurrent();
             AppearancePreferences.Refresh();
             ReloadSettings();

@@ -14,6 +14,17 @@ public class App : Application
     private SettingsWindow? _settingsWindow;
     private LinuxTrayCompatibility? _trayCompatibility;
 
+    private void Settings_Click(object? sender, System.EventArgs e) => ShowSettings(false);
+    private void About_Click(object? sender, System.EventArgs e) => ShowSettings(true);
+    private void ShowSettings(bool about)
+    {
+        var settings = _settingsWindow ??= (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow as SettingsWindow
+            ?? new SettingsWindow { KeepAlive = true };
+        settings.Show();
+        settings.Activate();
+        if (about) settings.OpenAbout();
+    }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);

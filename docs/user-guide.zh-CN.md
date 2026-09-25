@@ -24,12 +24,28 @@ macOS 启用毛玻璃时，歌词背景层会自动使用 0% 不透明度，避�
 
 Cider 继续使用 Web API。其他播放器可选运行 `brew install media-control` 安装兜底工具，程序会检查 PATH 和标准 Homebrew 位置。设置 `OMNILYRICS_MEDIA_CONTROL=off` 可关闭兜底，或将该变量设为工具的绝对路径。Apple Music / Spotify 原生连接及 Cider Web API 优先于同一播放器的系统媒体连接；可选连接缺失或失败不会阻止其他播放器运行。
 
-原生 Apple Music / Spotify 支持曲目信息、进度、播放／暂停、上一首／下一首与跳转；本次不新增原生队列或收藏能力。
-播放控制、队列与收藏取决于播放器提供的能力。支持收藏时才会显示收藏按钮，目前收藏适配使用 Cider V4 的资料库 API。
+原生 Apple Music / Spotify 支持曲目信息、进度、播放／暂停、上一首／下一首与跳转，尚未接入原生队列。
+
+## 收藏与账号授权
+
+| 播放器 | 收藏接入 | 设置方式 |
+| --- | --- | --- |
+| macOS Apple Music | 原生 Apple Events | 允许自动化控制“音乐”，无需另行登录 |
+| Spotify 桌面端 | Spotify Web API | 设置 → 播放器连接 → Spotify：填写开发者应用 Client ID，并在浏览器授权 |
+| YesPlayMusic 桌面端 | 内置网易云本地 API | 保持播放器运行，在“播放器连接”中用网易云音乐手机 App 扫码，使用与播放器相同的账号 |
+| Cider | V4 资料库 API | 开启 API 令牌认证时，需授予 library 权限 |
+
+仅在歌曲匹配且能读取收藏状态时显示按钮。支持固定歌曲 ID 的接口会按 ID 写入，切歌后拒绝旧状态，并回读确认结果。接口不可用或拒绝请求时，不会显示收藏成功。共享 `/favorites` 接口使用同一套适配。
+
+Spotify 使用 [PKCE 授权流程](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow)，无需 Client Secret。在开发者后台登记 **`http://127.0.0.1/spotify/callback`**（不填端口）；每次授权选择临时本地端口，符合 Spotify 的[回调地址规则](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri)。仅请求 `user-library-read`、`user-library-modify`、`user-read-currently-playing` 权限。开发模式仍受账号条件限制，详见[当前开发者要求](https://developer.spotify.com/documentation/web-api/concepts/quota-modes)。授权账号的当前歌曲必须与桌面播放器匹配。收藏使用现行 `/me/library` 接口，不依赖桌面脚本提供资料库控制。
+
+YesPlayMusic 的授权独立于播放器浏览器会话；需要现有本地接口 27232、10754 端口可用。取消授权或关闭设置会停止登录。“移除已保存的授权”仅清除 OmniLyrics 保存的凭据，不会退出播放器账号。Spotify 刷新令牌与网易云登录 Cookie 保存在配置目录中的独立私密文件，macOS/Linux 仅允许当前用户读写，不包含在导出的设置中；请勿分享凭据文件。
 
 ## 五种界面预设
 
 在**设置 → 常规 → 界面缩放**中，默认跟随当前显示器。可选择 100–200%，或自定义 75–300% 的比例，立即覆盖所有窗口的缩放。这不会改变已保存的歌词字号。配置文件中的 `appearance.uiScale` 为 `null` 时跟随系统，为 `1.5` 等数值时表示 150% 等手动比例。
+
+原生托盘菜单提供缩放、布局、深浅主题、毛玻璃、翻译和字号快捷设置。若大比例导致设置窗口超出屏幕，选择“恢复 100% 缩放并找回设置窗口”，即可重置缩放并把完整设置窗口移回显示器。托盘菜单不受 OmniLyrics 界面缩放影响。
 
 在「设置 → 外观」中选择布局，然后点击「应用」。
 
