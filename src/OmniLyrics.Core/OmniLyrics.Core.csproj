@@ -6,11 +6,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.0"/>
+        <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.1.4"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
     </ItemGroup>
-
-    <ItemGroup><InternalsVisibleTo Include="PrefetchSmoke" /></ItemGroup>
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>

@@ -1,19 +1,10 @@
 # OmniLyrics
 
-English | [简体中文](./README.zh-CN.md)
-
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
-
-Version **0.4.0** adds five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching.
-See the [user guide](./docs/user-guide.md) for configuration, screenshots and integrations.
 
 ## Showcase
 
-Current GUI (Focus layout):
-
-![GUI Focus](./media/images/gui_preset_focus.png)
-
-Earlier Windows GUI (Top: Cider Mini Player, Bottom: OmniLyrics):
+Windows GUI (Top: Cider Mini Player, Bottom: OmniLyrics):
 
 ![GUI Windows](./media/images/gui_windows.png)
 
@@ -31,7 +22,7 @@ Linux Waybar (Line Mode, --mode line):
 
 ## Build Instruction
 
-Download and Install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+Download and Install [.NET SDK 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 
 > On macOS, you need to install `media-control`:
 > ```bash
@@ -60,7 +51,7 @@ dotnet run --project src/OmniLyrics.Cli
 
 # Launch the CLI in single-line output mode
 # (Suitable for status bars)
-dotnet run --project src/OmniLyrics.Cli -- --mode line
+dotnet run --project src/OmniLyrics.Cli --mode line
 
 # -------------------------------------------------------------------
 # Remote control commands
@@ -68,16 +59,16 @@ dotnet run --project src/OmniLyrics.Cli -- --mode line
 # -------------------------------------------------------------------
 
 # Playback control
-dotnet run --project src/OmniLyrics.Cli -- --control play
-dotnet run --project src/OmniLyrics.Cli -- --control pause
-dotnet run --project src/OmniLyrics.Cli -- --control toggle
+dotnet run --project src/OmniLyrics.Cli --control play
+dotnet run --project src/OmniLyrics.Cli --control pause
+dotnet run --project src/OmniLyrics.Cli --control toggle
 
 # Track navigation
-dotnet run --project src/OmniLyrics.Cli -- --control prev
-dotnet run --project src/OmniLyrics.Cli -- --control next
+dotnet run --project src/OmniLyrics.Cli --control prev
+dotnet run --project src/OmniLyrics.Cli --control next
 
 # Seek to a position (in seconds)
-dotnet run --project src/OmniLyrics.Cli -- --control seek 10
+dotnet run --project src/OmniLyrics.Cli --control seek 10
 ```
 
 ### Waybar Module Config
@@ -96,8 +87,9 @@ dotnet run --project src/OmniLyrics.Cli -- --control seek 10
 
 ## Web API Endpoints
 
-Default and line modes provide an HTTP service at `http://127.0.0.1:27270`.
-GUI, TUI and CLI reuse an existing service; when it stops, remaining local instances take over in GUI → TUI → CLI order. For snapshots, favorites and trusted-LAN configuration, see the [protocol guide](./docs/user-guide.md#web-api-endpoints).
+When OmniLyrics is running in **lyrics mode**, an optional lightweight HTTP server can be enabled  
+(typically on `http://127.0.0.1:27270`).  
+This allows external apps, widgets, or scripts to fetch lyrics or control playback.
 
 ### Lyrics API
 
@@ -109,8 +101,8 @@ Returns the current track's parsed LRC lyrics as JSON.
 
 ```json
 [
-  { "timestamp": "00:00:12.4500000", "text": "We're no strangers to love" },
-  { "timestamp": "00:00:16.8000000", "text": "You know the rules and so do I" }
+  { "timestamp": "00:12.45", "text": "We're no strangers to love" },
+  { "timestamp": "00:16.80", "text": "You know the rules and so do I" }
 ]
 ```
 
@@ -162,7 +154,7 @@ Seek to a given position.
 
 ### Metadata API
 
-#### **GET /playback/state**
+#### **GET /state**
 
 Returns the current player state as JSON:
 
@@ -171,26 +163,25 @@ Returns the current player state as JSON:
   "title": "Song Title",
   "artists": ["Artist A", "Artist B"],
   "album": "Best Album",
-  "position": "00:00:12.3400000",
-  "duration": "00:03:00",
+  "position": 12.34,
+  "duration": 180.0,
   "playing": true,
   "sourceApp": "Cider",
   "artworkUrl": "https://example.com/art.jpg",
   "artworkWidth": 640,
-  "artworkHeight": 640
+  "artworkHeight": 640,
 }
 ```
 
 ---
 
-## Cider V3+ Settings
+## Cider V3 Settings
 
-Cider V4 is the current commercial release; V3 remains a compatibility target. V2 and V1 are not supported.
+Settings -> Connectivity -> Manage External Application Access to Cider -> Disable "Require API Tokens"
 
-- **With authentication:** create an application token in Cider's Settings → Connectivity → Manage External Application Access, then enter it in OmniLyrics Settings → Player connections, or run `config cider token` in the CLI.
-- **Without authentication:** disable **Require API Tokens** in Cider, then choose **No token** in OmniLyrics or run `config cider none`. The API, including favorites where supported, works without a token in this mode.
+![Cider V3 Settings](./media/images/ciderv3_settings.png)
 
-GUI, interactive terminal and CLI share these settings. Blank token input retains the saved token. See [connection details](./docs/user-guide.md#cider-v3-support-and-configuration).
+> Currently, we don't have custom token support.
 
 ## TODO List
 
@@ -202,7 +193,9 @@ Common Backends:
 
 Software-specific Backends:
 
-- [x] [Cider V3+](https://cider.sh/) (V4 tested; V3 compatibility target)
+- [x] [Cider v3](https://cider.sh/) (Current Commercial Version)
+- [ ] [Cider v2](https://v2.cider.sh/) (Previous Commercial Version)
+- [ ] [Cider v1](https://github.com/ciderapp/Cider) (Open Source Version)
 - [x] [YesPlayMusic](https://github.com/qier222/YesPlayMusic)
 
 Server & API
@@ -218,12 +211,7 @@ CLI:
 
 TUI:
 
-- [x] Interactive shared configuration
-
 GUI:
-
-- [x] Five layouts, bilingual karaoke, window lock and optional favorites
-- [x] Searchable settings, appearance controls and Chinese/English UI
 
 ## Acknowledgement
 

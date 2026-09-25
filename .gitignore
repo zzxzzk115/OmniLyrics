@@ -20,7 +20,3 @@ launchSettings.json
 # Publish
 publish/
 Output/
-
-# Python integration checks
-__pycache__/
-*.pyc

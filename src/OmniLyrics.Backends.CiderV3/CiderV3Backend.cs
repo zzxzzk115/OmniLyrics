@@ -2,7 +2,7 @@
 
 namespace OmniLyrics.Backends.CiderV3;
 
-public class CiderV3Backend : BasePlayerBackend, IDisposable, IPlaybackQueueSource
+public class CiderV3Backend : BasePlayerBackend
 {
     private readonly CiderV3Api _api = CiderV3Api.CreateDefault();
     private CancellationTokenSource? _cts;
@@ -48,8 +48,7 @@ public class CiderV3Backend : BasePlayerBackend, IDisposable, IPlaybackQueueSour
             Title = info.Name ?? "",
             Duration = TimeSpan.FromMilliseconds(info.DurationInMillis),
             Position = TimeSpan.FromSeconds(info.CurrentPlaybackTime),
-            SourceApp = "Cider",
-            PlayerName = "Cider"
+            SourceApp = "Cider"
         };
 
         if (!string.IsNullOrEmpty(info.ArtistName))
@@ -111,14 +110,4 @@ public class CiderV3Backend : BasePlayerBackend, IDisposable, IPlaybackQueueSour
     public override Task NextAsync() => _api.NextAsync();
     public override Task PreviousAsync() => _api.PreviousAsync();
     public override Task SeekAsync(TimeSpan position) => _api.SeekAsync(position);
-
-    public Task<IReadOnlyList<PlayerState>> GetUpcomingTracksAsync(int limit, CancellationToken token = default)
-        => _api.GetUpcomingTracksAsync(limit, token);
-
-    public void Dispose()
-    {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _api.Dispose();
-    }
 }

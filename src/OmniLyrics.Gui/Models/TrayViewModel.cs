@@ -5,7 +5,6 @@ using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using OmniLyrics.Gui.Utils;
-using OmniLyrics.Core;
 
 namespace OmniLyrics.Gui.Models;
 
@@ -28,13 +27,6 @@ public class TrayViewModel : INotifyPropertyChanged
         ToggleLyricsCommand = new RelayCommand(ToggleLyrics);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         QuitCommand = new RelayCommand(Quit);
-        ToggleLockCommand = new RelayCommand(() =>
-        {
-            try { AppearancePreferences.ToggleLock(); } catch { }
-        });
-        Localization.Changed += OnLanguageChanged;
-        AppearancePreferences.Changed += OnLanguageChanged;
-        _lifetime.Exit += (_, _) => { Localization.Changed -= OnLanguageChanged; AppearancePreferences.Changed -= OnLanguageChanged; };
 
         _mainWindow.PropertyChanged += (s, e) =>
         {
@@ -47,14 +39,10 @@ public class TrayViewModel : INotifyPropertyChanged
     public ICommand ToggleLyricsCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand QuitCommand { get; }
-    public ICommand ToggleLockCommand { get; }
-    public string LockText => Localization.Get(AppearancePreferences.Current.Locked ? "UnlockWindow" : "LockWindow");
 
     // === Header text ===
     public string ShowLyricsText =>
-        (_mainWindow.IsVisible ? "✓ " : "") + Localization.Get("ShowLyrics");
-
-    private void OnLanguageChanged() { OnPropertyChanged(nameof(ShowLyricsText)); OnPropertyChanged(nameof(LockText)); }
+        _mainWindow.IsVisible ? "✓ Show Lyrics" : "Show Lyrics";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

@@ -8,24 +8,17 @@
 
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
-        <Style Selector=":is(Control)">
-            <Setter Property="ToolTip.ServiceEnabled" Value="False" />
-        </Style>
     </Application.Styles>
 
     <TrayIcon.Icons>
         <TrayIcons>
             <TrayIcon Icon="/Assets/app.ico"
-                      IsVisible="True"
-                      Command="{Binding ToggleLyricsCommand}"
-                      ToolTipText="">
+                      ToolTipText="OmniLyrics">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="{Binding ShowLyricsText}" Command="{Binding ToggleLyricsCommand}" />
-                        <NativeMenuItem Header="{Binding LockText}" Command="{Binding ToggleLockCommand}" />
-                        <NativeMenuItem Header="{DynamicResource Settings}" Command="{Binding OpenSettingsCommand}" />
-                        <NativeMenuItem Header="{DynamicResource Quit}" Command="{Binding QuitCommand}" />
+                        <NativeMenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+                        <NativeMenuItem Header="Quit" Command="{Binding QuitCommand}" />
                     </NativeMenu>
                 </TrayIcon.Menu>
             </TrayIcon>

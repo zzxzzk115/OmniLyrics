@@ -1,2 +1,0 @@
-# Unified-diff context lines must retain their leading space.
-integrations/quickshell/*.patch whitespace=-blank-at-eol

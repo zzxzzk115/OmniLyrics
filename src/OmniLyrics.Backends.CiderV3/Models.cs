@@ -2,14 +2,6 @@
 
 namespace OmniLyrics.Backends.CiderV3;
 
-public sealed class CiderQueueItem
-{
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-    [JsonPropertyName("attributes")]
-    public CiderNowPlayingInfo? Attributes { get; set; }
-}
-
 public class CiderIsPlayingResponse
 {
     [JsonPropertyName("status")]

@@ -60,11 +60,9 @@ public class MacOSMediaControlBackend : BasePlayerBackend, IDisposable
         {
             using var reader = _proc.StandardOutput;
 
-            while (!token.IsCancellationRequested)
+            while (!reader.EndOfStream && !token.IsCancellationRequested)
             {
                 string? line = await reader.ReadLineAsync();
-                if (line == null)
-                    break;
                 if (!string.IsNullOrWhiteSpace(line))
                     ProcessJsonLine(line);
             }

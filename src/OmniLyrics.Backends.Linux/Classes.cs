@@ -1,6 +1,4 @@
-﻿using Tmds.DBus;
-
-namespace OmniLyrics.Backends.Linux;
+﻿namespace OmniLyrics.Backends.Linux;
 
 public class Player
 {
@@ -30,5 +28,5 @@ public class Player
     public Task NextAsync() => _proxy.NextAsync();
     public Task PreviousAsync() => _proxy.PreviousAsync();
     public Task SeekAsync(long microseconds) => _proxy.SeekAsync(microseconds);
-    public Task SetPositionAsync(ObjectPath trackId, long position) => _proxy.SetPositionAsync(trackId, position);
+    public Task SetPositionAsync(string trackId, long position) => _proxy.SetPositionAsync(trackId, position);
 }
