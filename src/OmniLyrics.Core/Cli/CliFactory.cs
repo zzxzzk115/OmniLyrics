@@ -10,6 +10,7 @@ public static class CliFactory
         return mode switch
         {
             "line" => new LineLyricsCli(backend),
+            "json" => new JsonLyricsCli(backend),
             _ => new DefaultLyricsCli(backend)
         };
     }

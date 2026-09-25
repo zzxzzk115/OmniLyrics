@@ -1,4 +1,6 @@
-﻿namespace OmniLyrics.Backends.Linux;
+﻿using Tmds.DBus;
+
+namespace OmniLyrics.Backends.Linux;
 
 public class NameOwnerChangedEvent
 {
@@ -56,7 +58,12 @@ public class PlayerMetadata
             switch (kv.Key)
             {
                 case "mpris:trackid":
-                    trackId = kv.Value as string;
+                    trackId = kv.Value switch
+                    {
+                        ObjectPath path => path.ToString(),
+                        string text => text,
+                        _ => null
+                    };
                     break;
                 case "xesam:title":
                     title = kv.Value as string;
