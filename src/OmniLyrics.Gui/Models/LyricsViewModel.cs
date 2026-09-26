@@ -112,7 +112,7 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
         Localization.Refresh();
         var remote = _backend.RemoteSnapshot;
         var state = remote != null ? remote.State : _backend.GetCurrentState();
-        if (state != null && (string.IsNullOrWhiteSpace(state.Title) || MediaTypeDetector.Guess(state) != MediaType.Music)) state = null;
+        if (state != null && (string.IsNullOrWhiteSpace(state.Title) || MediaTypeDetector.Guess(state) is MediaType.Video or MediaType.Podcast)) state = null;
         _state = state?.DeepCopy();
         RefreshFavorite(state);
         // Keep frame-rate interpolation only while music is advancing.

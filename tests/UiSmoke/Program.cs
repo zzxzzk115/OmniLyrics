@@ -133,6 +133,19 @@ Check("Floating lyric buttons have no tooltips and keep accessible names",
 Check("All lyric controls disable tooltip services", window.GetVisualDescendants().OfType<Control>().All(control => !ToolTip.GetServiceEnabled(control)));
 Until(() => vm.CurrentLine.Text == words[3]);
 Check("Bilingual lyric follows the current original line", vm.Translation == translations[3] && vm.PreviousLine.Text == words[2]);
+var completeMetadata = fake.State.DeepCopy();
+fake.State = completeMetadata.DeepCopy();
+fake.State.Title = "Spotify without duration";
+fake.State.SourceApp = "org.mpris.MediaPlayer2.spotify";
+fake.State.Duration = TimeSpan.Zero;
+Until(() => vm.Title == fake.State.Title);
+Check("GUI displays Spotify with an unknown duration", vm.CurrentLine.Text == words[3] && vm.Duration == TimeSpan.Zero);
+fake.State = fake.State.DeepCopy(); fake.State.Album = null; fake.State.Title = "Incomplete music metadata";
+Until(() => vm.Title == fake.State.Title);
+Check("Unknown media classification does not become no song playing", MediaTypeDetector.Guess(fake.State) == MediaType.Unknown
+    && vm.CurrentLine.Text == words[3]);
+fake.State = completeMetadata;
+Until(() => vm.Title == completeMetadata.Title);
 Check("Background favorite lookup never sets busy or writes", !vm.FavoriteBusy && fake.Writes == 0);
 fake.ReadGate.TrySetResult(true);
 Until(() => vm.FavoriteAvailable);
