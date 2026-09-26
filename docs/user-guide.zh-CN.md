@@ -20,7 +20,7 @@ macOS 的「设置 → macOS 环境」可检查原生访问、Homebrew 和 media
 
 Apple Events 并非新 macOS 才支持；这里使用的 JXA 桥接从 [OS X 10.10](https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/) 起就已提供。当前 .NET 10 应用要求 [macOS 14 或更新版本](https://github.com/dotnet/core/blob/main/release-notes/10.0/supported-os.md)，安装 media-control 不能让不受支持的旧系统变为受支持。
 
-macOS 启用毛玻璃时，歌词背景层会自动使用 0% 不透明度，避免遮住 Avalonia 原有的原生模糊材质。文字提供局部描边/阴影保护，控件使用局部底色，工具栏其余区域保持透明；对比度过低的文字颜色会在显示时自动校正，但不改变已保存的配色。关闭毛玻璃后可重新调整背景不透明度。Apple Events 进度采用连续插值，小幅采样误差逐渐校正，避免逐字高亮突然前跳。
+macOS 启用毛玻璃时，歌词背景层会自动使用 0% 不透明度，避免遮住 Avalonia 原有的原生模糊材质。歌词窗口或整个应用失去焦点后，毛玻璃仍保持启用，不会抢回焦点。文字提供局部描边/阴影保护，控件使用局部底色，工具栏其余区域保持透明；对比度过低的文字颜色会在显示时自动校正，但不改变已保存的配色。关闭毛玻璃后可重新调整背景不透明度。Apple Events 进度采用连续插值，小幅采样误差逐渐校正，避免逐字高亮突然前跳。
 
 Cider 继续使用 Web API。其他播放器可选运行 `brew install media-control` 安装兜底工具，程序会检查 PATH 和标准 Homebrew 位置。设置 `OMNILYRICS_MEDIA_CONTROL=off` 可关闭兜底，或将该变量设为工具的绝对路径。Apple Music / Spotify 原生连接及 Cider Web API 优先于同一播放器的系统媒体连接；可选连接缺失或失败不会阻止其他播放器运行。
 

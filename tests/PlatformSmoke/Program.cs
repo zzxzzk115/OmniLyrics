@@ -129,16 +129,31 @@ if (OperatingSystem.IsMacOS())
         && Native.Send(effect, Native.sel_registerName("isHidden")) == IntPtr.Zero
         && Native.Rect(effect, Native.sel_registerName("frame")).Width >= lyrics.ClientSize.Width - 1
         && Native.Rect(effect, Native.sel_registerName("frame")).Height >= lyrics.ClientSize.Height - 1);
+    lyrics.Activate(); Pump();
+    Check("Requesting lyric activation keeps the native effect explicitly active", (nint)Native.Send(effect, Native.sel_registerName("state")) == 1);
+    // App activation can be declined by macOS while a user works in another
+    // application. Relinquish this window's key status without stealing focus.
+    Native.Call(lyrics.TryGetPlatformHandle()!.Handle, Native.sel_registerName("resignKeyWindow")); Pump();
+    settings.Activate(); Pump();
+    Check("Unfocused lyrics keep native blur without taking focus back", !lyrics.IsActive
+        && (nint)Native.Send(effect, Native.sel_registerName("state")) == 1);
+    var settingsEffect = Native.FindBlur(settings.TryGetPlatformHandle()!.Handle);
+    Check("Keeping lyric blur active does not change other windows", settingsEffect != IntPtr.Zero
+        && Native.Send(settingsEffect, Native.sel_registerName("state")) == IntPtr.Zero);
     Check("The toolbar leaves the native glass visible between controls", lyrics.FindControl<Grid>("TopBar")!.Background is ISolidColorBrush { Color.A: 0 });
     AppearancePreferences.Save(original with { FontSize = original.FontSize + 1 }); Pump();
     Check("Unrelated appearance changes do not disable native blur", lyrics.ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur);
     Check("The lyric canvas cannot cover native blur with the saved 60 percent tint", ((ISolidColorBrush)lyrics.FindControl<Border>("RootBorder")!.Background!).Opacity == 0);
     AppearancePreferences.Save(original with { UseBlur = false }); Pump();
     Check("Turning blur off restores the user's solid-background tint", ((ISolidColorBrush)lyrics.FindControl<Border>("RootBorder")!.Background!).Opacity == original.BackgroundOpacity);
+    Check("Turning blur off hides the native effect and restores its default activity", Native.Send(effect, Native.sel_registerName("isHidden")) != IntPtr.Zero
+        && Native.Send(effect, Native.sel_registerName("state")) == IntPtr.Zero);
     foreach (var mode in new[] { "dark", "light" })
     {
         var appearance = original with { UseBlur = true, ThemeMode = mode, TextColor = "#FFFFFF", HighlightColor = "#FFFFFF" };
         AppearancePreferences.Save(appearance); Pump();
+        Check($"{mode} blur becomes active again while lyrics remain unfocused", !lyrics.IsActive
+            && (nint)Native.Send(effect, Native.sel_registerName("state")) == 1);
         var palette = LyricPalette.Create(appearance);
         Check($"{mode} transparent lyrics contrast with their outline", LyricPalette.Contrast(palette.Text, palette.Outline) >= 4.5
             && LyricPalette.Contrast(palette.Highlight, palette.Outline) >= 4.5);
@@ -182,6 +197,7 @@ if (OperatingSystem.IsMacOS())
     Hover(false); lyrics.Hide();
     Check("Hiding the window cancels pending hover state", toolbar.Opacity == 0 && !toolbar.IsHitTestVisible);
     lyrics.Show(); Pump(50); Hover(true); Pump(400);
+    Check("Reopened lyrics retain native blur activity", (nint)Native.Send(Native.FindBlur(lyrics.TryGetPlatformHandle()!.Handle), Native.sel_registerName("state")) == 1);
     Check("A previous hide request cannot hide a reopened hovered window", toolbar.Opacity == 1 && toolbar.IsHitTestVisible);
     var tray = new TrayViewModel(lyrics, settings, new Avalonia.Controls.ApplicationLifetimes.ClassicDesktopStyleApplicationLifetime());
     var app = Application.Current!;
@@ -239,6 +255,7 @@ static class Native
     [DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr objc_getClass(string name);
     [DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr sel_registerName(string name);
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] internal static extern IntPtr Send(IntPtr receiver, IntPtr selector);
+    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] internal static extern void Call(IntPtr receiver, IntPtr selector);
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")] internal static extern IntPtr CFDataCreate(IntPtr allocator, byte[] bytes, nint length);
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")] internal static extern void CFRelease(IntPtr value);
     [DllImport("/System/Library/Frameworks/ImageIO.framework/ImageIO")] internal static extern IntPtr CGImageSourceCreateWithData(IntPtr data, IntPtr options);
