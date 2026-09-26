@@ -442,7 +442,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem x:Name="PlayerConnectionsTab" Tag="PlayerConnections CiderOptions Integration TokenMode NoTokenMode FavoritesAccess Spotify Apple Music YesPlayMusic Client ID QR token 收藏 授权 二维码">
+                <TabItem x:Name="PlayerConnectionsTab" Tag="PlayerConnections CiderOptions Integration TokenMode NoTokenMode FavoritesAccess Spotify Apple Music YesPlayMusic YesPlayMusicConnectionTitle AuthorizeYesPlayMusic NetEase 网易云 扫码 登录 Client ID QR token 收藏 授权 二维码">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <PathIcon Classes="navIcon" Width="17" Height="17" Data="M7 2h2v6h6V2h2v6h3v3a8 8 0 0 1-7 8v4h-2v-4a8 8 0 0 1-7-8V8h3zm-1 8v1a6 6 0 0 0 12 0v-1z"/>
@@ -494,16 +494,18 @@
                                     <TextBlock x:Name="SpotifyLoginStatus" Classes="hint"/>
                                 </StackPanel>
                             </Border>
-                            <Border Classes="card">
+                            <Border Classes="card" x:Name="YesPlayMusicCard">
                                 <StackPanel Spacing="12" Margin="0,16">
-                                    <TextBlock Text="YesPlayMusic" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource YesPlayMusicConnectionTitle}" Classes="section"/>
                                     <TextBlock Text="{DynamicResource YesPlayMusicFavoritesHint}" Classes="hint"/>
-                                    <Image x:Name="YesPlayMusicQr" IsVisible="False" Width="200" Height="200" HorizontalAlignment="Left"/>
+                                    <Border x:Name="YesPlayMusicQrPanel" IsVisible="False" Background="White" CornerRadius="12" Padding="12" HorizontalAlignment="Left">
+                                        <Image x:Name="YesPlayMusicQr" Width="200" Height="200" Stretch="Uniform"/>
+                                    </Border>
                                     <WrapPanel>
-                                        <Button Classes="action" x:Name="YesPlayMusicCheckButton" Content="{DynamicResource CheckLocalApi}" Click="YesPlayMusicCheck_Click" Margin="0,0,10,8"/>
-                                        <Button Classes="action" x:Name="YesPlayMusicSignInButton" Content="{DynamicResource AuthorizeYesPlayMusic}" Click="YesPlayMusicSignIn_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action primary" x:Name="YesPlayMusicSignInButton" Content="{DynamicResource AuthorizeYesPlayMusic}" Click="YesPlayMusicSignIn_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="YesPlayMusicCheckButton" Content="{DynamicResource YesPlayMusicCheckAuthorization}" Click="YesPlayMusicCheck_Click" Margin="0,0,10,8"/>
                                         <Button Classes="action" x:Name="YesPlayMusicCancelButton" IsVisible="False" Content="{DynamicResource Cancel}" Click="YesPlayMusicCancel_Click" Margin="0,0,10,8"/>
-                                        <Button Classes="action" Content="{DynamicResource DisconnectAccount}" Click="YesPlayMusicDisconnect_Click" Margin="0,0,10,8"/>
+                                        <Button Classes="action" x:Name="YesPlayMusicDisconnectButton" IsVisible="False" Content="{DynamicResource DisconnectAccount}" Click="YesPlayMusicDisconnect_Click" Margin="0,0,10,8"/>
                                     </WrapPanel>
                                     <TextBlock x:Name="YesPlayMusicLoginStatus" Classes="hint"/>
                                 </StackPanel>

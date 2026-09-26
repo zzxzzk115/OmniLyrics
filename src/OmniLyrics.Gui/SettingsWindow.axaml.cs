@@ -431,6 +431,7 @@ public partial class SettingsWindow : Window
             VersionText.Text = Localization.Format("Version", ApplicationInfo.Version);
             UpdateTokenHint();
             RenderMacEnvironment();
+            SetYesPlayMusicStatus(_yesPlayMusicStatusKey);
             SettingsTabs_SelectionChanged(this, null!);
         }
         catch { StatusText.Text = Localization.Get("ConfigReadError"); }
@@ -488,7 +489,12 @@ public partial class SettingsWindow : Window
                     var text = control is TextBlock label ? label.Text : control is ContentControl { Content: string content } ? content : null;
                     return text != null && terms.Any(term => text.Contains(term, StringComparison.OrdinalIgnoreCase));
                 });
-                match?.BringIntoView();
+                if (selected == PlayerConnectionsTab && match != null)
+                {
+                    var card = match.GetLogicalAncestors().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("card"));
+                    (card ?? match).BringIntoView();
+                }
+                else match?.BringIntoView();
             }, Avalonia.Threading.DispatcherPriority.Loaded);
         }
     }

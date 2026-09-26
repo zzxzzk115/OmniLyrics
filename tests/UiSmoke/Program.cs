@@ -240,6 +240,22 @@ Click(settings, "ApplySettings"); Pump();
 Check("Settings save immediately updates the lyric window", window.FindControl<KaraokeLine>("ReadingLyric")!.FontSize == 46 && UserConfiguration.LoadAppearance().HighlightColor == "#CCAAFF" && UserConfiguration.LoadAppearance().UseBlur);
 settings.FindControl<TextBox>("SettingsSearch")!.Text = "字体"; Pump();
 Check("Chinese search navigates to appearance even in English", ((TabItem)settings.FindControl<TabControl>("SettingsTabs")!.SelectedItem!).Name == "AppearanceTab");
+settings.FindControl<TextBox>("SettingsSearch")!.Text = "网易云扫码"; Pump(300);
+Check("Chinese QR search locates the YesPlayMusic connection in English",
+    navigation.SelectedItem == settings.FindControl<TabItem>("PlayerConnectionsTab")
+    && settings.FindControl<Button>("YesPlayMusicSignInButton")!.Content?.ToString() == "NetEase QR sign-in");
+var qrLogin = settings.FindControl<Button>("YesPlayMusicSignInButton")!;
+var qrPoint = qrLogin.TranslatePoint(new Point(qrLogin.Bounds.Width / 2, qrLogin.Bounds.Height / 2), settings)!.Value;
+Check("Search brings the NetEase sign-in button into the visible page", settings.InputHitTest(qrPoint) is Visual qrHit
+    && (qrHit == qrLogin || qrHit.GetVisualAncestors().Contains(qrLogin)));
+Check("No stale QR or disconnect action is shown before sign-in", !settings.FindControl<Border>("YesPlayMusicQrPanel")!.IsVisible
+    && !settings.FindControl<Button>("YesPlayMusicDisconnectButton")!.IsVisible);
+var connectionCard = settings.FindControl<Border>("YesPlayMusicCard")!;
+var connectionScroll = connectionCard.GetVisualAncestors().OfType<ScrollViewer>().First();
+var cardTop = connectionCard.TranslatePoint(default, connectionScroll)!.Value.Y;
+Check("QR search reveals the whole connection card including authorization status",
+    cardTop >= -1 && cardTop + connectionCard.Bounds.Height <= connectionScroll.Bounds.Height + 1);
+Capture(settings, "settings-yesplaymusic-en");
 settings.FindControl<TextBox>("SettingsSearch")!.Text = "Lazy_V"; Pump();
 Check("Search locates the author on the About page", ((TabItem)settings.FindControl<TabControl>("SettingsTabs")!.SelectedItem!).Name == "AboutTab");
 Capture(settings, "settings-about-en");

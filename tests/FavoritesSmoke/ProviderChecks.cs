@@ -113,6 +113,7 @@ internal static class ProviderChecks
     {
         var state = new PlayerState { Title = "Song", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromSeconds(120), SourceApp = "YesPlayMusic" };
         var id = 12; var liked = false; var writes = 0; var fail = false; var qrShown = false; var localSession = false;
+        var qrChecks = 0; var qrExpired = false; var rejectSession = false;
         using var api = new YesPlayMusicFavorites(new Handler(request =>
         {
             var uri = request.RequestUri!;
@@ -124,13 +125,13 @@ internal static class ProviderChecks
             }
             if (uri.AbsolutePath == "/login/qr/key") return Json(new { data = new { unikey = "test-key" } });
             if (uri.AbsolutePath == "/login/qr/create") return Json(new { data = new { qrimg = "data:image/png;base64,AQID" } });
-            if (uri.AbsolutePath == "/login/qr/check") return Json(new { code = 803, cookie = "MUSIC_U=test-cookie;" });
+            if (uri.AbsolutePath == "/login/qr/check") return Json(new { code = qrExpired ? 800 : ++qrChecks < 3 ? 800 + qrChecks : 803, cookie = "MUSIC_U=test-cookie;" });
             if (!request.Headers.Contains("Cookie"))
             {
                 if (!localSession) return Json(new { code = 301 });
             }
             else Check("Local NetEase API receives the authorized session", request.Headers.GetValues("Cookie").Single() == "MUSIC_U=test-cookie");
-            if (uri.AbsolutePath == "/user/account") return Json(new { code = 200, profile = new { userId = 15 } });
+            if (uri.AbsolutePath == "/user/account") return Json(new { code = 200, profile = rejectSession ? null : new { userId = 15 } });
             if (uri.AbsolutePath == "/likelist") return Json(new { code = 200, ids = liked ? new[] { 12 } : Array.Empty<int>() });
             Check("YesPlayMusic mutation uses an explicit song ID", uri.AbsolutePath == "/like" && QueryHelpers.ParseQuery(uri.Query)["id"] == id.ToString());
             writes++;
@@ -140,14 +141,23 @@ internal static class ProviderChecks
         }));
         Check("YesPlayMusic hides favorites when the local API requires sign-in", await api.GetFavoriteAsync(state) == null && writes == 0);
         Check("The local session check distinguishes unsigned access", !await api.HasLocalSessionAsync());
+        Check("Settings report a sign-in requirement without a session", await api.CheckAuthorizationAsync() == YesPlayMusicAuthorizationState.SignInRequired);
         localSession = true;
         Check("The local session check detects existing API access", await api.HasLocalSessionAsync());
+        Check("Settings accept a local session without QR authorization", await api.CheckAuthorizationAsync() == YesPlayMusicAuthorizationState.LocalSession);
         var local = await api.GetFavoriteAsync(state);
         Check("YesPlayMusic uses an existing local API session without saved credentials", local is { IsFavorite: false } && UserConfiguration.ReadYesPlayMusicCookie() == null);
         Check("YesPlayMusic can favorite directly through a signed-in local API", (await api.SetFavoriteAsync(state, local!, true)) is { IsFavorite: true });
         liked = false; writes = 0; localSession = false;
-        await api.SignInAsync(bytes => { qrShown = bytes.SequenceEqual(new byte[] { 1, 2, 3 }); return Task.CompletedTask; }, default);
+        var progress = new List<YesPlayMusicQrStatus>();
+        await api.SignInAsync(bytes => { qrShown = bytes.SequenceEqual(new byte[] { 1, 2, 3 }); return Task.CompletedTask; }, default,
+            status => { progress.Add(status); return Task.CompletedTask; });
+        Check("QR login distinguishes waiting for scan and phone confirmation", progress.SequenceEqual(new[] { YesPlayMusicQrStatus.AwaitingScan, YesPlayMusicQrStatus.AwaitingConfirmation }));
         Check("QR login stores a verified session", qrShown && UserConfiguration.ReadYesPlayMusicCookie() == "MUSIC_U=test-cookie;");
+        Check("Settings check the saved QR session, not anonymous API access", await api.CheckAuthorizationAsync() == YesPlayMusicAuthorizationState.Authorized && !await api.HasLocalSessionAsync());
+        rejectSession = true;
+        Check("Settings distinguish expired credentials from unavailable APIs", await api.CheckAuthorizationAsync() == YesPlayMusicAuthorizationState.Expired);
+        rejectSession = false;
         var snapshot = await api.GetFavoriteAsync(state);
         Check("YesPlayMusic reads current favorite state", snapshot is { IsFavorite: false } && writes == 0);
         Check("YesPlayMusic likes and confirms", (await api.SetFavoriteAsync(state, snapshot!, true)) is { IsFavorite: true } && writes == 1);
@@ -158,6 +168,10 @@ internal static class ProviderChecks
         Check("YesPlayMusic does not report rejected writes as success", await api.SetFavoriteAsync(state, snapshot!, true) == null && !liked && writes == 3);
         UserConfiguration.ClearYesPlayMusicCookie();
         Check("Disconnect removes YesPlayMusic capability", await api.GetFavoriteAsync(state) == null);
+        qrExpired = true;
+        try { await api.SignInAsync(_ => Task.CompletedTask, default); throw new Exception("Expired QR accepted"); }
+        catch (TimeoutException) { Check("Expired QR reports expiry without saving a session", UserConfiguration.ReadYesPlayMusicCookie() == null); }
+        qrExpired = false;
         using var cancel = new CancellationTokenSource();
         try { await api.SignInAsync(_ => { cancel.Cancel(); return Task.CompletedTask; }, cancel.Token); throw new Exception("Cancellation ignored"); }
         catch (OperationCanceledException) { Check("Cancelled QR login cannot save credentials", UserConfiguration.ReadYesPlayMusicCookie() == null); }

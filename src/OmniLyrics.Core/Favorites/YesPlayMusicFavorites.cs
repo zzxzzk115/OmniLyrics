@@ -5,6 +5,9 @@ using OmniLyrics.Core.Shared;
 
 namespace OmniLyrics.Core.Favorites;
 
+public enum YesPlayMusicAuthorizationState { SignInRequired, LocalSession, Authorized, Expired }
+public enum YesPlayMusicQrStatus { AwaitingScan, AwaitingConfirmation }
+
 /// <summary>YesPlayMusic's local player and bundled NetEase API, with a separate QR-authorized session.</summary>
 public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
 {
@@ -23,40 +26,64 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token).ConfigureAwait(false));
         return json.RootElement.Clone();
     }
-    public async Task SignInAsync(Func<byte[], Task> showQr, CancellationToken token)
+    public async Task SignInAsync(Func<byte[], Task> showQr, CancellationToken token, Func<YesPlayMusicQrStatus, Task>? progress = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         var ct = timeout.Token;
-        var keyResponse = await ApiAsync("login/qr/key", ct, null).ConfigureAwait(false);
-        var key = keyResponse.GetProperty("data").GetProperty("unikey").GetString();
-        if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
-        var qr = await ApiAsync("login/qr/create", ct, null, new() { ["key"] = key, ["qrimg"] = "true" }).ConfigureAwait(false);
-        var image = qr.GetProperty("data").GetProperty("qrimg").GetString();
-        const string prefix = "data:image/png;base64,";
-        if (image == null || !image.StartsWith(prefix, StringComparison.Ordinal) || image.Length > 500000)
-            throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
-        await showQr(Convert.FromBase64String(image[prefix.Length..])).ConfigureAwait(false);
-        while (true)
+        try
         {
-            await Task.Delay(2000, ct).ConfigureAwait(false);
-            var status = await ApiAsync("login/qr/check", ct, null, new() { ["key"] = key }).ConfigureAwait(false);
-            switch (status.GetProperty("code").GetInt32())
+            var keyResponse = await ApiAsync("login/qr/key", ct, null).ConfigureAwait(false);
+            var key = keyResponse.GetProperty("data").GetProperty("unikey").GetString();
+            if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
+            var qr = await ApiAsync("login/qr/create", ct, null, new() { ["key"] = key, ["qrimg"] = "true" }).ConfigureAwait(false);
+            var image = qr.GetProperty("data").GetProperty("qrimg").GetString();
+            const string prefix = "data:image/png;base64,";
+            if (image == null || !image.StartsWith(prefix, StringComparison.Ordinal) || image.Length > 500000)
+                throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
+            await showQr(Convert.FromBase64String(image[prefix.Length..])).ConfigureAwait(false);
+            var lastStatus = YesPlayMusicQrStatus.AwaitingScan;
+            if (progress != null) await progress(lastStatus).ConfigureAwait(false);
+            while (true)
             {
-                case 801: case 802: continue;
-                case 803:
-                    var cookie = status.GetProperty("cookie").GetString();
-                    if (string.IsNullOrWhiteSpace(cookie) || await UserIdAsync(cookie, ct).ConfigureAwait(false) == null)
-                        throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
-                    ct.ThrowIfCancellationRequested();
-                    UserConfiguration.SaveYesPlayMusicCookie(cookie);
-                    return;
-                default: throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
+                await Task.Delay(2000, ct).ConfigureAwait(false);
+                var status = await ApiAsync("login/qr/check", ct, null, new() { ["key"] = key }).ConfigureAwait(false);
+                switch (status.GetProperty("code").GetInt32())
+                {
+                    case 800: throw new TimeoutException(Localization.Get("YesPlayMusicQrExpired"));
+                    case 801: case 802:
+                        var currentStatus = status.GetProperty("code").GetInt32() == 802
+                            ? YesPlayMusicQrStatus.AwaitingConfirmation : YesPlayMusicQrStatus.AwaitingScan;
+                        if (progress != null && currentStatus != lastStatus) await progress(currentStatus).ConfigureAwait(false);
+                        lastStatus = currentStatus;
+                        continue;
+                    case 803:
+                        var cookie = status.GetProperty("cookie").GetString();
+                        if (string.IsNullOrWhiteSpace(cookie) || await UserIdAsync(cookie, ct).ConfigureAwait(false) == null)
+                            throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
+                        ct.ThrowIfCancellationRequested();
+                        UserConfiguration.SaveYesPlayMusicCookie(cookie);
+                        return;
+                    default: throw new InvalidOperationException(Localization.Get("YesPlayMusicLoginFailed"));
+                }
             }
         }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !token.IsCancellationRequested)
+        {
+            throw new TimeoutException(Localization.Get("YesPlayMusicQrExpired"));
+        }
     }
+
     public async Task<bool> HasLocalSessionAsync(CancellationToken token = default) =>
         await UserIdAsync(null, token).ConfigureAwait(false) != null;
+
+    public async Task<YesPlayMusicAuthorizationState> CheckAuthorizationAsync(CancellationToken token = default)
+    {
+        var cookie = UserConfiguration.ReadYesPlayMusicCookie();
+        var signedIn = await UserIdAsync(cookie, token).ConfigureAwait(false) != null;
+        if (!string.IsNullOrEmpty(cookie)) return signedIn ? YesPlayMusicAuthorizationState.Authorized : YesPlayMusicAuthorizationState.Expired;
+        return signedIn ? YesPlayMusicAuthorizationState.LocalSession : YesPlayMusicAuthorizationState.SignInRequired;
+    }
 
     private async Task<long?> UserIdAsync(string? cookie, CancellationToken token)
     {
