@@ -152,7 +152,35 @@ jobs:
         shell: bash
         run: |
           version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
-          bash build/macos/package.sh "publish/${{ matrix.rid }}/gui/OmniLyrics.Gui" "packages/${{ matrix.rid }}" "$version"
+          dotnet publish src/OmniLyrics.Gui -c Release -r "${{ matrix.rid }}" --self-contained true -p:IncludeNativeLibrariesForSelfExtract=false -o "publish-app/${{ matrix.rid }}"
+          bash build/macos/package.sh "publish-app/${{ matrix.rid }}" "packages/${{ matrix.rid }}" "$version"
+
+      - name: Start the macOS app bundle without extracting native libraries
+        if: matrix.projectName == 'gui' && matrix.rid == 'osx-arm64'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, subprocess, tempfile
+          app = pathlib.Path('packages/osx-arm64/OmniLyrics.app').resolve()
+          with tempfile.TemporaryDirectory() as folder:
+              extract = pathlib.Path(folder) / 'bundle'
+              env = dict(os.environ, OMNILYRICS_CONFIG_DIR=folder + '/config',
+                         OMNILYRICS_MEDIA_CONTROL='off', DOTNET_BUNDLE_EXTRACT_BASE_DIR=str(extract))
+              process = subprocess.Popen([str(app / 'Contents/MacOS/OmniLyrics.Gui'), '--settings'], env=env)
+              try:
+                  try:
+                      code = process.wait(timeout=8)
+                  except subprocess.TimeoutExpired:
+                      if extract.exists():
+                          raise SystemExit('App unexpectedly extracted native libraries.')
+                      print('App bundle loaded successfully without native library extraction.')
+                  else:
+                      raise SystemExit(f'App bundle exited early: {code}')
+              finally:
+                  if process.poll() is None:
+                      process.kill()
+                      process.wait()
+          PY
 
       - name: Upload macOS application
         if: runner.os == 'macOS' && matrix.projectName == 'gui'

@@ -34,6 +34,16 @@ Linux Waybar（单行模式，--mode line）：
 
 ![CLI（Linux Waybar）](./media/images/cli_linux_waybar.jpg)
 
+## 安装 macOS GUI
+
+macOS 14 或更新版本可通过[维护者的 Homebrew tap](https://github.com/zzxzzk115/homebrew-tap)安装经过 Developer ID 正式签名和 Apple 公证的应用：
+
+```bash
+brew install --cask zzxzzk115/tap/omnilyrics
+```
+
+从“应用程序”打开 **OmniLyrics**。Cask 自动选择 Apple Silicon 或 Intel 版本，无需另装 .NET。手动安装可在 [Releases](https://github.com/zzxzzk115/OmniLyrics/releases) 下载 `omnilyrics-gui-osx-*-signed.zip`。
+
 ## 编译运行
 
 从源码编译需要下载并安装 [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)。
@@ -48,7 +58,7 @@ Linux Waybar（单行模式，--mode line）：
 > brew install media-control
 > ```
 
-macOS GUI 构建会在便携单文件之外提供 `OmniLyrics.app.zip`，便于通过 Finder 启动；菜单、Dock 与“关于”均显示 OmniLyrics。应用包使用临时签名，尚无 Developer ID 公证。可为本地发布结果打包：
+macOS GUI 构建会在便携单文件之外提供 `OmniLyrics.app.zip`，便于通过 Finder 启动；菜单、Dock 与“关于”均显示 OmniLyrics。CI 构建使用临时签名；Developer ID 正式签名、Apple 公证及 Homebrew Cask 发布流程见 [macOS 发布指南](./docs/macos-release.md)。可为本地预览打包：
 
 ```bash
 bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
