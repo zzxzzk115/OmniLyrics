@@ -5,6 +5,7 @@ using OmniLyrics.Backends.CiderV3;
 using OmniLyrics.Core;
 
 Environment.SetEnvironmentVariable("CIDER_AUTH_MODE", "none");
+Environment.SetEnvironmentVariable("OMNILYRICS_CONFIG_DIR", Path.Combine(Path.GetTempPath(), "omnilyrics-favorites-" + Guid.NewGuid().ToString("N")));
 using var reserve = new TcpListener(IPAddress.Loopback, 0); reserve.Start();
 var port = ((IPEndPoint)reserve.LocalEndpoint).Port; reserve.Stop();
 using var server = new HttpListener(); server.Prefixes.Add($"http://127.0.0.1:{port}/"); server.Start();
@@ -67,3 +68,5 @@ state.Title = "New song";
 Check("Changed metadata cannot mutate the previous track", await api.SetFavoriteAsync(state, snapshot!, true) == null && writes == 3);
 server.Stop(); await host;
 Console.WriteLine($"{passed} favorites checks passed");
+
+await ProviderChecks.RunAsync();

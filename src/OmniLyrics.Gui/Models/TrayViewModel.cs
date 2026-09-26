@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using OmniLyrics.Gui.Utils;
 using OmniLyrics.Core;
+using OmniLyrics.Core.Configuration;
 
 namespace OmniLyrics.Gui.Models;
 
@@ -28,6 +29,22 @@ public class TrayViewModel : INotifyPropertyChanged
         ToggleLyricsCommand = new RelayCommand(ToggleLyrics);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         QuitCommand = new RelayCommand(Quit);
+        RecoverInterfaceCommand = new RelayCommand(() =>
+        {
+            Change(s => s with { UiScale = 1 });
+            OpenSettings();
+            _settingsWindow.RecoverWindowPlacement();
+        });
+        SystemScaleCommand = Scale(null);
+        Scale100Command = Scale(1); Scale125Command = Scale(1.25); Scale150Command = Scale(1.5); Scale200Command = Scale(2);
+        ClassicCommand = Layout("classic"); CompactCommand = Layout("compact"); FocusCommand = Layout("focus");
+        PortraitCommand = Layout("portrait"); FullscreenCommand = Layout("fullscreen");
+        DarkCommand = new RelayCommand(() => Change(s => s with { ThemeMode = "dark" }));
+        LightCommand = new RelayCommand(() => Change(s => s with { ThemeMode = "light" }));
+        BlurCommand = new RelayCommand(() => Change(s => s with { UseBlur = !s.UseBlur }));
+        TranslationCommand = new RelayCommand(() => Change(s => s with { ShowTranslation = !s.ShowTranslation }));
+        LargerTextCommand = new RelayCommand(() => Change(s => s with { FontSize = Math.Min(72, s.FontSize + 2) }));
+        SmallerTextCommand = new RelayCommand(() => Change(s => s with { FontSize = Math.Max(16, s.FontSize - 2) }));
         ToggleLockCommand = new RelayCommand(() =>
         {
             try { AppearancePreferences.ToggleLock(); } catch { }
@@ -48,13 +65,52 @@ public class TrayViewModel : INotifyPropertyChanged
     public ICommand OpenSettingsCommand { get; }
     public ICommand QuitCommand { get; }
     public ICommand ToggleLockCommand { get; }
+    public ICommand RecoverInterfaceCommand { get; }
+    public ICommand SystemScaleCommand { get; }
+    public ICommand Scale100Command { get; }
+    public ICommand Scale125Command { get; }
+    public ICommand Scale150Command { get; }
+    public ICommand Scale200Command { get; }
+    public ICommand ClassicCommand { get; }
+    public ICommand CompactCommand { get; }
+    public ICommand FocusCommand { get; }
+    public ICommand PortraitCommand { get; }
+    public ICommand FullscreenCommand { get; }
+    public ICommand DarkCommand { get; }
+    public ICommand LightCommand { get; }
+    public ICommand BlurCommand { get; }
+    public ICommand TranslationCommand { get; }
+    public ICommand LargerTextCommand { get; }
+    public ICommand SmallerTextCommand { get; }
+    private void Change(Func<AppearanceSettings, AppearanceSettings> change)
+    {
+        try { AppearancePreferences.Save(change(AppearancePreferences.Current)); }
+        catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException or ArgumentException) { }
+    }
+    private ICommand Scale(double? value) => new RelayCommand(() => Change(s => s with { UiScale = value }));
+    private ICommand Layout(string value) => new RelayCommand(() => Change(s => s with { Preset = value }));
+    private static string Selected(string text, bool selected) => (selected ? "✓ " : "") + text;
+    public string SystemScaleText => Selected(Localization.Get("SystemScale"), AppearancePreferences.Current.UiScale == null);
+    public string Scale100Text => Selected("100%", AppearancePreferences.Current.UiScale == 1);
+    public string Scale125Text => Selected("125%", AppearancePreferences.Current.UiScale == 1.25);
+    public string Scale150Text => Selected("150%", AppearancePreferences.Current.UiScale == 1.5);
+    public string Scale200Text => Selected("200%", AppearancePreferences.Current.UiScale == 2);
+    public string ClassicText => Selected(Localization.Get("ClassicPreset"), AppearancePreferences.Current.Preset == "classic");
+    public string CompactText => Selected(Localization.Get("CompactPreset"), AppearancePreferences.Current.Preset == "compact");
+    public string FocusText => Selected(Localization.Get("FocusPreset"), AppearancePreferences.Current.Preset == "focus");
+    public string PortraitText => Selected(Localization.Get("PortraitPreset"), AppearancePreferences.Current.Preset == "portrait");
+    public string FullscreenText => Selected(Localization.Get("FullscreenPreset"), AppearancePreferences.Current.Preset == "fullscreen");
+    public string DarkText => Selected(Localization.Get("DarkTheme"), AppearancePreferences.Current.ThemeMode == "dark");
+    public string LightText => Selected(Localization.Get("LightTheme"), AppearancePreferences.Current.ThemeMode == "light");
+    public string BlurText => Selected(Localization.Get("UseBlur"), AppearancePreferences.Current.UseBlur);
+    public string TranslationText => Selected(Localization.Get("TrayTranslation"), AppearancePreferences.Current.ShowTranslation);
     public string LockText => Localization.Get(AppearancePreferences.Current.Locked ? "UnlockWindow" : "LockWindow");
 
     // === Header text ===
     public string ShowLyricsText =>
         (_mainWindow.IsVisible ? "✓ " : "") + Localization.Get("ShowLyrics");
 
-    private void OnLanguageChanged() { OnPropertyChanged(nameof(ShowLyricsText)); OnPropertyChanged(nameof(LockText)); }
+    private void OnLanguageChanged() => OnPropertyChanged(null);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

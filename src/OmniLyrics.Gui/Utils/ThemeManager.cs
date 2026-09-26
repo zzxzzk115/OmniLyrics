@@ -45,15 +45,20 @@ public static class ThemeManager
                      "RadioButtonOuterEllipseCheckedFill", "RadioButtonOuterEllipseCheckedStroke", "TextControlBorderBrushFocused" })
             Brush(key, settings.AccentColor);
 
-        // Custom canvas colors can differ from the chrome theme. Keep the song and its controls readable.
-        var darkCanvas = Luminance(Color.Parse(settings.BackgroundColor)) < .35;
-        Brush("LyricPrimary", darkCanvas ? "#F5F4F7" : "#25252C");
-        Brush("LyricSecondary", darkCanvas ? "#B6BAC6" : "#5F6372");
-        Brush("LyricMuted", darkCanvas ? "#979EAF" : "#686C7A");
-        Brush("LyricButtonBackground", darkCanvas ? "#20FFFFFF" : "#15000000");
-        Brush("LyricHoverBackground", darkCanvas ? "#35FFFFFF" : "#23000000");
-        Brush("CoverPlaceholder", darkCanvas ? "#283142" : "#E1E5EE");
-        Brush("ProgressBackground", darkCanvas ? "#3B4253" : "#D6D9E2");
+        var palette = LyricPalette.Create(settings);
+        void LyricBrush(string key, Color color) => app.Resources[key] = new SolidColorBrush(color);
+        LyricBrush("LyricPrimary", palette.Primary);
+        LyricBrush("LyricSecondary", palette.Secondary);
+        LyricBrush("LyricMuted", palette.Muted);
+        LyricBrush("LyricAccent", palette.Accent);
+        LyricBrush("LyricControlSurface", palette.ControlSurface);
+        app.Resources["LyricOutlineColor"] = palette.Outline;
+        app.Resources["LyricShadowOpacity"] = palette.Translucent ? 1d : 0d;
+        Brush("LyricButtonBackground", palette.Translucent ? palette.ControlSurface.ToString() : palette.Dark ? "#20FFFFFF" : "#15000000");
+        Brush("LyricHoverBackground", palette.Dark ? "#45454F" : "#DEDEE6");
+        Brush("CoverPlaceholder", palette.Dark ? "#283142" : "#E1E5EE");
+        Brush("ProgressBackground", palette.Dark ? "#3B4253" : "#D6D9E2");
+
     }
 
     private static Color Mix(Color color, Color target, double amount) => Color.FromRgb(

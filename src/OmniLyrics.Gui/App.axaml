@@ -2,11 +2,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:OmniLyrics.Gui.Models"
              x:Class="OmniLyrics.Gui.App"
+             Name="OmniLyrics"
              RequestedThemeVariant="Default"
              x:DataType="models:TrayViewModel">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="{DynamicResource AboutOmniLyrics}" Click="About_Click"/>
+            <NativeMenuItem Header="{DynamicResource Settings}" Gesture="Meta+OemComma" Click="Settings_Click"/>
+        </NativeMenu>
+    </NativeMenu.Menu>
     <Application.Styles>
+        <Style Selector="Popup"><Setter Property="InheritsTransform" Value="True"/></Style>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
         <Style Selector=":is(Control)">
@@ -19,11 +27,42 @@
             <TrayIcon Icon="/Assets/app.ico"
                       IsVisible="True"
                       Command="{Binding ToggleLyricsCommand}"
-                      ToolTipText="">
+                      ToolTipText="OmniLyrics">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="{Binding ShowLyricsText}" Command="{Binding ToggleLyricsCommand}" />
                         <NativeMenuItem Header="{Binding LockText}" Command="{Binding ToggleLockCommand}" />
+                        <NativeMenuItem Header="{DynamicResource RecoverInterface}" Command="{Binding RecoverInterfaceCommand}" />
+                        <NativeMenuItem Header="{DynamicResource UiScale}">
+                            <NativeMenuItem.Menu><NativeMenu>
+                                <NativeMenuItem Header="{Binding SystemScaleText}" Command="{Binding SystemScaleCommand}" />
+                                <NativeMenuItem Header="{Binding Scale100Text}" Command="{Binding Scale100Command}" />
+                                <NativeMenuItem Header="{Binding Scale125Text}" Command="{Binding Scale125Command}" />
+                                <NativeMenuItem Header="{Binding Scale150Text}" Command="{Binding Scale150Command}" />
+                                <NativeMenuItem Header="{Binding Scale200Text}" Command="{Binding Scale200Command}" />
+                            </NativeMenu></NativeMenuItem.Menu>
+                        </NativeMenuItem>
+                        <NativeMenuItem Header="{DynamicResource Preset}">
+                            <NativeMenuItem.Menu><NativeMenu>
+                                <NativeMenuItem Header="{Binding ClassicText}" Command="{Binding ClassicCommand}" />
+                                <NativeMenuItem Header="{Binding CompactText}" Command="{Binding CompactCommand}" />
+                                <NativeMenuItem Header="{Binding FocusText}" Command="{Binding FocusCommand}" />
+                                <NativeMenuItem Header="{Binding PortraitText}" Command="{Binding PortraitCommand}" />
+                                <NativeMenuItem Header="{Binding FullscreenText}" Command="{Binding FullscreenCommand}" />
+                            </NativeMenu></NativeMenuItem.Menu>
+                        </NativeMenuItem>
+                        <NativeMenuItem Header="{DynamicResource TrayAppearance}">
+                            <NativeMenuItem.Menu><NativeMenu>
+                                <NativeMenuItem Header="{Binding DarkText}" Command="{Binding DarkCommand}" />
+                                <NativeMenuItem Header="{Binding LightText}" Command="{Binding LightCommand}" />
+                                <NativeMenuItemSeparator />
+                                <NativeMenuItem Header="{Binding BlurText}" Command="{Binding BlurCommand}" />
+                                <NativeMenuItem Header="{Binding TranslationText}" Command="{Binding TranslationCommand}" />
+                                <NativeMenuItem Header="{DynamicResource LargerText}" Command="{Binding LargerTextCommand}" />
+                                <NativeMenuItem Header="{DynamicResource SmallerText}" Command="{Binding SmallerTextCommand}" />
+                            </NativeMenu></NativeMenuItem.Menu>
+                        </NativeMenuItem>
+                        <NativeMenuItemSeparator />
                         <NativeMenuItem Header="{DynamicResource Settings}" Command="{Binding OpenSettingsCommand}" />
                         <NativeMenuItem Header="{DynamicResource Quit}" Command="{Binding QuitCommand}" />
                     </NativeMenu>

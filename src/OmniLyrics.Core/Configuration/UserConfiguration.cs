@@ -12,11 +12,11 @@ public sealed record LyricsSettings(bool Prefetch, int PrefetchCount,
     string PreferredSource = "qq");
 public sealed record AppearanceSettings(string Preset, bool Locked, bool ShowLogo, bool ShowPlayerInfo,
     bool ApproximateHighlight = true, bool ShowTranslation = true, double FontSize = 32, double TranslationFontSize = 18,
-    string TextColor = "#BAC0CC", string HighlightColor = "#F3C879", string BackgroundColor = "#161A23", double BackgroundOpacity = .82,
-    bool UseBlur = true, string ThemeMode = "dark", string AccentColor = "#FA586A");
+    string TextColor = "#BAC0CC", string HighlightColor = "#F3C879", string BackgroundColor = "#161A23", double BackgroundOpacity = .6,
+    bool UseBlur = true, string ThemeMode = "dark", string AccentColor = "#FA586A", double? UiScale = null);
 
 /// <summary>Shared by all frontends. Credentials are separate from ordinary settings.</summary>
-public static class UserConfiguration
+public static partial class UserConfiguration
 {
     public static string DirectoryPath
     {
@@ -56,10 +56,11 @@ public static class UserConfiguration
             appearance?["textColor"]?.GetValue<string>() ?? "#BAC0CC",
             appearance?["highlightColor"]?.GetValue<string>() ?? "#F3C879",
             appearance?["backgroundColor"]?.GetValue<string>() ?? "#161A23",
-            appearance?["backgroundOpacity"]?.GetValue<double>() ?? .82,
+            appearance?["backgroundOpacity"]?.GetValue<double>() ?? .6,
             appearance?["useBlur"]?.GetValue<bool>() ?? true,
             appearance?["themeMode"]?.GetValue<string>() ?? "dark",
-            appearance?["accentColor"]?.GetValue<string>() ?? "#FA586A");
+            appearance?["accentColor"]?.GetValue<string>() ?? "#FA586A",
+            appearance?["uiScale"]?.GetValue<double>());
         ValidateAppearance(settings);
         return settings;
     }
@@ -86,6 +87,7 @@ public static class UserConfiguration
         appearance["useBlur"] = settings.UseBlur;
         appearance["themeMode"] = settings.ThemeMode;
         appearance["accentColor"] = settings.AccentColor;
+        appearance["uiScale"] = settings.UiScale;
         WritePrivate(SettingsPath, root.ToJsonString(new() { WriteIndented = true }) + "\n");
     }
 
@@ -96,6 +98,8 @@ public static class UserConfiguration
             || !double.IsFinite(settings.TranslationFontSize) || settings.TranslationFontSize is < 12 or > 40
             || !double.IsFinite(settings.BackgroundOpacity) || settings.BackgroundOpacity is < 0 or > 1)
             throw new ArgumentException("Invalid appearance size or opacity.");
+        if (settings.UiScale is { } scale && (!double.IsFinite(scale) || scale is < .75 or > 3))
+            throw new ArgumentException("UI scale must be null (system) or between 0.75 and 3.");
         ThemePalette.FromAppearance(settings).Validate();
     }
 
@@ -321,7 +325,7 @@ public static class UserConfiguration
             throw new InvalidDataException("Unsupported configuration version.");
         var language = root["language"]?.GetValue<string>() ?? "auto";
         if (language is not ("auto" or "en" or "zh-CN")) throw new InvalidDataException("Unknown language.");
-        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root);
+        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root); ParseSpotifyClientId(root); ParseLan(root);
         var server = root["server"];
         ValidateServer(new(server?["listenAddress"]?.GetValue<string>() ?? "127.0.0.1",
             server?["httpPort"]?.GetValue<int>() ?? 27270, server?["udpPort"]?.GetValue<int>() ?? 32651,

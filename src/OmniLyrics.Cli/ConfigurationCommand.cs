@@ -12,13 +12,15 @@ internal static class ConfigurationCommand
         if (args.FirstOrDefault() != "config") return false;
         try
         {
-            if (args.Length == 1)
+            if (args.Length >= 2 && args[1] == "lan") await LanConfigurationCommand.RunAsync(args[2..]);
+            else if (args.Length == 1)
             {
                 if (Console.IsInputRedirected)
                     throw new InvalidOperationException("Use config show, config lyrics prefetch on|off or config cider for connection settings.");
                 Console.WriteLine(Localization.Get("ConfigMenu"));
                 Console.Write(Localization.Get("ChoosePreferences"));
                 var choice = Console.ReadLine();
+                if (choice == "4") return await TryRunAsync(["config", "lan"]);
                 if (choice == "2") return await TryRunAsync(["config", "cider"]);
                 if (choice == "3")
                 {
@@ -111,7 +113,10 @@ internal static class ConfigurationCommand
             {
                 var server = UserConfiguration.LoadServer();
                 if (args.Length == 3 && args[2] is "local" or "lan")
-                    server = server with { ListenAddress = args[2] == "lan" ? "0.0.0.0" : "127.0.0.1" };
+                    {
+                    UserConfiguration.SaveLan(UserConfiguration.LoadLan() with { Enabled = args[2] == "lan" });
+                    server = server with { ListenAddress = "127.0.0.1", ControlHost = "127.0.0.1" };
+                }
                 else if (args.Length == 4 && args[2] == "listen")
                     server = server with { ListenAddress = args[3] };
                 else if (args.Length == 4 && args[2] == "target")
@@ -119,6 +124,9 @@ internal static class ConfigurationCommand
                 else if (args.Length == 5 && args[2] == "ports" && int.TryParse(args[3], out var http) && int.TryParse(args[4], out var udp))
                     server = server with { HttpPort = http, UdpPort = udp };
                 else throw new InvalidOperationException("Usage: config server local|lan|listen ADDRESS|target HOST|ports HTTP UDP");
+                if (!System.Net.IPAddress.TryParse(server.ListenAddress, out var bindIp) || !System.Net.IPAddress.IsLoopback(bindIp)
+                    || !(server.ControlHost == "localhost" || System.Net.IPAddress.TryParse(server.ControlHost, out var targetIp) && System.Net.IPAddress.IsLoopback(targetIp)))
+                    throw new InvalidOperationException(Localization.Get("LanUsePairing"));
                 UserConfiguration.SaveServer(server);
                 Console.WriteLine(Localization.Text("Saved server settings. Restart a running control server to apply listening changes."));
             }
@@ -132,7 +140,7 @@ internal static class ConfigurationCommand
         {
             Console.Error.WriteLine(Localization.Text("Configuration cancelled."));
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException or ArgumentException or HttpRequestException or FormatException)
         {
             // Do not echo malformed configuration or a supplied secret.
             Console.Error.WriteLine(error is InvalidOperationException or ArgumentException ? Localization.Text(error.Message)

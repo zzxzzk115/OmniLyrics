@@ -88,10 +88,18 @@ public class PlayerMetadata
                     }
                     break;
                 case "mpris:length":
-                    if (kv.Value is long lengthLong)
+                    // Spotify can send uint64 although MPRIS specifies int64.
+                    // Reject malformed/out-of-range values without losing the track.
+                    var microseconds = kv.Value switch
                     {
-                        length = TimeSpan.FromMicroseconds(lengthLong);
-                    }
+                        long value when value >= 0 => (ulong?)value,
+                        ulong value => value,
+                        int value when value >= 0 => (ulong?)value,
+                        uint value => value,
+                        _ => null
+                    };
+                    if (microseconds is { } us && us <= (ulong)(long.MaxValue / TimeSpan.TicksPerMicrosecond))
+                        length = TimeSpan.FromTicks((long)us * TimeSpan.TicksPerMicrosecond);
                     break;
                 case "mpris:artUrl":
                     if (kv.Value is string artUrlStr && Uri.TryCreate(artUrlStr, UriKind.Absolute, out var artUri))

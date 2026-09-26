@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleName</key><string>OmniLyrics</string>
+    <key>CFBundleDisplayName</key><string>OmniLyrics</string>
+    <key>CFBundleIdentifier</key><string>io.github.zzxzzk115.OmniLyrics</string>
+    <key>CFBundleExecutable</key><string>OmniLyrics.Gui</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleIconFile</key><string>app.icns</string>
+    <key>CFBundleVersion</key><string>0.4.1</string>
+    <key>CFBundleShortVersionString</key><string>0.4.1</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSAppleEventsUsageDescription</key><string>OmniLyrics reads playback information and controls music players to synchronize lyrics and manage favorites.</string>
+</dict></plist>

@@ -27,6 +27,11 @@ public sealed class KaraokeLine : Control
         AvaloniaProperty.Register<KaraokeLine, IBrush>(nameof(HighlightBrush), new SolidColorBrush(Color.Parse("#FFF3C879")));
     public static readonly StyledProperty<IBrush> BaseBrushProperty =
         AvaloniaProperty.Register<KaraokeLine, IBrush>(nameof(BaseBrush), new SolidColorBrush(Color.Parse("#A8FFFFFF")));
+    public static readonly StyledProperty<IBrush> OutlineBrushProperty =
+        AvaloniaProperty.Register<KaraokeLine, IBrush>(nameof(OutlineBrush), Brushes.Black);
+    public IBrush OutlineBrush { get => GetValue(OutlineBrushProperty); set => SetValue(OutlineBrushProperty, value); }
+    private static readonly Point[] OutlineOffsets = [new(-1.25, 0), new(1.25, 0), new(0, -1.25), new(0, 1.25),
+        new(-.9, -.9), new(.9, -.9), new(-.9, .9), new(.9, .9)];
     private double _layoutWidth = double.PositiveInfinity;
 
     private TextLayout? _baseText;
@@ -37,7 +42,7 @@ public sealed class KaraokeLine : Control
     static KaraokeLine()
     {
         AffectsRender<KaraokeLine>(LineProperty, PositionProperty, FontSizeProperty, WrapProperty, AlignLeftProperty,
-            ApproximateProperty, LineEndProperty, HighlightBrushProperty, BaseBrushProperty, DrawShadowProperty);
+            ApproximateProperty, LineEndProperty, HighlightBrushProperty, BaseBrushProperty, DrawShadowProperty, OutlineBrushProperty);
         AffectsMeasure<KaraokeLine>(LineProperty, FontSizeProperty, WrapProperty);
     }
 
@@ -56,7 +61,7 @@ public sealed class KaraokeLine : Control
     {
         base.OnPropertyChanged(change);
         if (change.Property == LineProperty || change.Property == FontSizeProperty || change.Property == WrapProperty || change.Property == AlignLeftProperty
-            || change.Property == HighlightBrushProperty || change.Property == BaseBrushProperty)
+            || change.Property == HighlightBrushProperty || change.Property == BaseBrushProperty || change.Property == OutlineBrushProperty)
         {
             ClearLayout();
             _ranges = KaraokeTimeline.GetRanges(Line);
@@ -87,7 +92,7 @@ public sealed class KaraokeLine : Control
             textWrapping: Wrap ? TextWrapping.Wrap : TextWrapping.NoWrap, maxWidth: targetWidth);
         _baseText = Layout(BaseBrush);
         _highlight = Layout(HighlightBrush);
-        _shadow = Layout(new SolidColorBrush(Color.Parse("#D0000000")));
+        _shadow = Layout(OutlineBrush);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -106,7 +111,12 @@ public sealed class KaraokeLine : Control
         var x = AlignLeft ? 0 : (Bounds.Width - (Wrap ? Bounds.Width : width) * scale) / 2;
         var y = (Bounds.Height - _baseText.Height * scale) / 2;
         using var transform = context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(x, y));
-        if (DrawShadow) _shadow!.Draw(context, new Point(1.5, 1.5));
+        if (DrawShadow)
+        {
+            // A thin local outline remains visible over either dark or light desktop
+            // content without painting an opaque layer over the native blur.
+            foreach (var offset in OutlineOffsets) _shadow!.Draw(context, offset);
+        }
         if (_ranges.Count == 0)
         {
             if (Approximate && LineEnd > Line.Timestamp)
