@@ -27,7 +27,7 @@
             <TrayIcon Icon="/Assets/app.ico"
                       IsVisible="True"
                       Command="{Binding ToggleLyricsCommand}"
-                      ToolTipText="">
+                      ToolTipText="OmniLyrics">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="{Binding ShowLyricsText}" Command="{Binding ToggleLyricsCommand}" />
