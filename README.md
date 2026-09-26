@@ -9,7 +9,7 @@ English | [简体中文](./README.zh-CN.md)
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
 
 Five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching are available.
-**0.4.1 (in development)** adds single-file builds, native macOS playback, more player favorites and secure LAN pairing.
+**0.4.1** adds single-file builds, native macOS playback, more player favorites and secure LAN pairing.
 See the [user guide](./docs/user-guide.md) for configuration and integrations.
 
 ## Showcase
