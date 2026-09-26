@@ -8,7 +8,8 @@ English | [简体中文](./README.zh-CN.md)
 
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
 
-Version **0.4.0** adds five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching.
+Five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching are available.
+**0.4.1 (in development)** adds single-file builds, native macOS playback, more player favorites and secure LAN pairing.
 See the [user guide](./docs/user-guide.md) for configuration and integrations.
 
 ## Showcase
@@ -35,7 +36,8 @@ Linux Waybar (Line Mode, --mode line):
 
 ## Build Instruction
 
-Download and Install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+Download and install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) to build from source.
+The 0.4.1 portable builds package the CLI and GUI as separate single executables with the .NET runtime included; no separate .NET installation is needed to run them.
 
 > On macOS, Apple Music and Spotify connect through the built-in Apple Events bridge. Allow the Automation permission when prompted; no Homebrew dependency is required. Cider uses its Web API.
 >
@@ -78,9 +80,13 @@ dotnet run --project src/OmniLyrics.Cli
 # (Suitable for status bars)
 dotnet run --project src/OmniLyrics.Cli -- --mode line
 
+# Stream JSON for desktop widgets, including bilingual lyrics
+dotnet run --project src/OmniLyrics.Cli -- --mode json
+
 # -------------------------------------------------------------------
 # Remote control commands
-# These commands require an Omnilyrics instance running in lyrics/daemon mode.
+# Keep an OmniLyrics instance running on the source device.
+# A selected paired source requires playback-control permission.
 # -------------------------------------------------------------------
 
 # Playback control
@@ -110,12 +116,30 @@ dotnet run --project src/OmniLyrics.Cli -- --control seek 10
 
 ---
 
+## Lyrics across LAN devices
+
+Display another computer's lyrics, including word timing and translations when available. Keep OmniLyrics running on both devices:
+
+1. On the source device, open **Settings → LAN devices**, enable sharing and save, then create an invitation using its LAN address.
+2. On the receiving device, use **Find nearby devices** to discover available sources, then paste the source's private invitation into **Pair device**. An invitation also works when discovery is blocked.
+3. Select the paired device and choose **Show this device’s lyrics**. Choose **Use this device’s player** to switch back.
+
+Sharing is off by default. Invitations expire after five minutes and can be used once; share them privately. Pairing grants read-only lyrics access unless **Also allow playback and favorites control** was checked when creating the invitation. Access can be revoked on the source device at any time.
+
+OmniLyrics apps on the same computer communicate without pairing or tokens through loopback HTTP/UDP. Other devices use authenticated HTTPS with certificate verification. Default LAN ports are TCP `27271` for HTTPS and UDP `32652` for discovery. CLI and interactive terminal setup use `OmniLyrics.Cli config lan`.
+
+See [shared service and LAN setup](./docs/user-guide.md#shared-service-and-lan-access) for commands, firewall settings and device management. For a local desktop widget, see the [Quickshell integration guide](./integrations/quickshell/README.md).
+
 ## Web API Endpoints
 
-Default and line modes provide an HTTP service at `http://127.0.0.1:27270`.
-GUI, TUI and CLI reuse an existing service; when it stops, remaining local instances take over in GUI → TUI → CLI order. For snapshots, favorites and secure LAN discovery and pairing, see the [protocol guide](./docs/user-guide.md#web-api-endpoints).
+GUI, TUI and CLI (including JSON mode) share the local HTTP service at `http://127.0.0.1:27270` without authentication. When its owner exits, remaining local instances take over in GUI → TUI → CLI order.
+The endpoints below also serve paired LAN clients over HTTPS; playback controls and favorites require control permission. See the [protocol guide](./docs/user-guide.md#web-api-endpoints) for snapshots, favorites and request details.
 
 ### Lyrics API
+
+#### **GET /snapshot**
+
+Returns player state and matching lyrics together, including word timing, translations, loading status and a lyrics revision. Recommended for clients displaying synchronized lyrics.
 
 #### **GET /lyrics**
 
@@ -130,11 +154,13 @@ Returns the current track's parsed LRC lyrics as JSON.
 ]
 ```
 
-If no lyrics are available:
+If a track is available but its lyrics have not loaded:
 
 ```json
 null
 ```
+
+Returns `404 Not Found` when no current player state is available.
 
 ---
 
@@ -224,23 +250,25 @@ Software-specific Backends:
 
 Server & API
 
-- [x] UDP Client & Server (localhost:32651)
-- [x] Web API (http://localhost:27270)
+- [x] Local UDP control (127.0.0.1:32651)
+- [x] Local Web API (http://127.0.0.1:27270)
+- [x] LAN discovery, authenticated HTTPS pairing and device revocation
 
 CLI:
 
 - [x] Multiple Line Mode (Default)
 - [x] Single Line Mode (for Waybar)
-- [x] Remote Control (through UDP commands)
+- [x] Local UDP control and authorized HTTPS control of paired devices
 
 TUI:
 
-- [x] Interactive shared configuration
+- [x] Interactive shared configuration, including LAN pairing
 
 GUI:
 
 - [x] Five layouts, bilingual karaoke, window lock and optional favorites
 - [x] Searchable settings, appearance controls and Chinese/English UI
+- [x] Lyrics source selection from paired LAN devices
 
 ## Acknowledgement
 
