@@ -201,6 +201,7 @@ Check("Typography, colors and translation option apply", window.FindControl<Kara
     && ((ISolidColorBrush)window.FindControl<KaraokeLine>("ReadingLyric")!.HighlightBrush).Color == Color.Parse("#AAEECC"));
 Check("Blur can be disabled independently of background opacity", window.TransparencyLevelHint.SequenceEqual(new[] { WindowTransparencyLevel.Transparent }));
 AppearancePreferences.ToggleLock(); Check("Tray-compatible toggle unlocks the window", !window.IsLocked);
+AppearancePreferences.Save(AppearancePreferences.Current with { UseBlur = true });
 UserConfiguration.SaveCider("token", "ui-demo-token");
 var settings = new SettingsWindow();
 settings.Show(); Pump(250);
@@ -233,6 +234,30 @@ PointerClick(settings, search);
 search.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape }); Pump();
 Check("Escape releases search focus without clearing the query", !search.IsKeyboardFocusWithin && string.IsNullOrEmpty(search.Text));
 Check("Settings and built-in controls disable tooltip services", settings.GetVisualDescendants().OfType<Control>().All(control => !ToolTip.GetServiceEnabled(control)));
+var blurToggle = settings.FindControl<ToggleSwitch>("BlurMode")!;
+var opacitySlider = settings.FindControl<Slider>("OpacitySlider")!;
+var blurHint = settings.FindControl<TextBlock>("BlurOpacityHint")!;
+var lyricBackground = window.FindControl<Border>("RootBorder")!;
+Check("Existing blur preferences use a clear background on every platform",
+    blurToggle.IsChecked == true && opacitySlider.Value == 0 && !opacitySlider.IsEnabled && blurHint.IsVisible
+    && ((ISolidColorBrush)lyricBackground.Background!).Opacity == 0);
+blurToggle.IsChecked = false;
+Check("Turning off blur restores the saved opacity", opacitySlider.IsEnabled && opacitySlider.Value == 60 && !blurHint.IsVisible);
+opacitySlider.Value = 37;
+Click(settings, "ApplySettings"); Pump();
+Check("Unblurred background uses the chosen opacity", !UserConfiguration.LoadAppearance().UseBlur
+    && Math.Abs(((ISolidColorBrush)lyricBackground.Background!).Opacity - .37) < .00001);
+blurToggle.IsChecked = true;
+Check("Enabling blur locks the background opacity at zero", opacitySlider.Value == 0 && !opacitySlider.IsEnabled && blurHint.IsVisible);
+Click(settings, "ApplySettings"); Pump();
+Check("Applying blur saves zero opacity and clears the lyric tint", UserConfiguration.LoadAppearance().BackgroundOpacity == 0
+    && ((ISolidColorBrush)lyricBackground.Background!).Opacity == 0);
+blurToggle.IsChecked = false;
+Check("Disabling blur after Apply restores the previous choice", opacitySlider.IsEnabled && opacitySlider.Value == 37);
+blurToggle.IsChecked = true;
+AppearancePreferences.Save(AppearancePreferences.Current with { BackgroundOpacity = .82 });
+Check("An older config with blur and nonzero opacity cannot cover the system backdrop",
+    ((ISolidColorBrush)lyricBackground.Background!).Opacity == 0);
 settings.FindControl<NumericUpDown>("LyricFontSize")!.Value = 46;
 settings.FindControl<ColorPicker>("HighlightColorPicker")!.Color = Color.Parse("#CCAAFF");
 settings.FindControl<ToggleSwitch>("BlurMode")!.IsChecked = true;

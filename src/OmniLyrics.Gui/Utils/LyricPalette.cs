@@ -9,7 +9,9 @@ internal sealed record LyricPalette(bool Dark, bool Translucent, Color Canvas, C
     Color Primary, Color Secondary, Color Muted, Color Accent, Color Outline, Color ControlSurface)
 {
     internal static bool NativeMacBlur(AppearanceSettings settings) => OperatingSystem.IsMacOS() && settings.UseBlur;
-    internal static double BackgroundOpacity(AppearanceSettings settings) => NativeMacBlur(settings) ? 0 : settings.BackgroundOpacity;
+    // Native/compositor blur supplies the backdrop. A separate color overlay hides it.
+    // Apply this to saved configurations and tray changes as well as the settings UI.
+    internal static double BackgroundOpacity(AppearanceSettings settings) => settings.UseBlur ? 0 : settings.BackgroundOpacity;
 
     internal static LyricPalette Create(AppearanceSettings settings)
     {

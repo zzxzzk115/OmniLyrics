@@ -153,9 +153,9 @@ public partial class SettingsWindow : Window
 
     private void UpdateBlurOptions()
     {
-        var nativeBlur = OperatingSystem.IsMacOS() && BlurMode.IsChecked == true;
-        MacBlurOpacityHint.IsVisible = nativeBlur;
-        if (nativeBlur)
+        var useBlur = BlurMode.IsChecked == true;
+        BlurOpacityHint.IsVisible = useBlur;
+        if (useBlur)
         {
             if (OpacitySlider.IsEnabled && !_reloading) _solidBackgroundOpacity = OpacitySlider.Value;
             OpacitySlider.Value = 0;
@@ -282,7 +282,7 @@ public partial class SettingsWindow : Window
                 ApproximateMode.IsChecked == true, TranslationMode.IsChecked == true,
                 (double)(LyricFontSize.Value ?? 32), (double)(TranslationSize.Value ?? 18),
                 Rgb(TextColorPicker.Color), Rgb(HighlightColorPicker.Color), Rgb(BackgroundColorPicker.Color),
-                OperatingSystem.IsMacOS() && BlurMode.IsChecked == true ? 0 : OpacitySlider.Value / 100, BlurMode.IsChecked == true,
+                BlurMode.IsChecked == true ? 0 : OpacitySlider.Value / 100, BlurMode.IsChecked == true,
                 ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color), AppearancePreferences.Current.UiScale);
             if (PlayerLyricsEnabled.IsChecked != true && QQLyricsEnabled.IsChecked != true && NeteaseLyricsEnabled.IsChecked != true)
             {
