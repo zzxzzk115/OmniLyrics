@@ -83,8 +83,10 @@ bash build/macos/notarize.sh finish /absolute/path/to/release-work/osx-x64/packa
 
 An in-progress submission exits with status 2; wait before checking again. An
 unsuccessful submission downloads Apple's diagnostic log and stops. After Apple
-accepts a submission, the script staples its ticket to the app, verifies it with
-`stapler`, `codesign`, and Gatekeeper, and recreates the archive. Distribute only
+accepts a submission, the script staples a temporary copy of the app, verifies it
+with `stapler`, `codesign`, and Gatekeeper, and recreates the archive from that copy.
+The original bundle stays unchanged, including when macOS protects it after a test
+launch. The Cask generator extracts and verifies the final archives. Distribute only
 the archive created **after stapling**, so its ticket is available offline.
 
 Run the signed app on a Mac before publishing. Verify launch, Apple Music access
@@ -127,36 +129,95 @@ Keep Homebrew's normal quarantine and Gatekeeper checks enabled during install
 testing. `brew uninstall --cask omnilyrics` removes the app; even `--zap` preserves
 the shared OmniLyrics configuration directory, which may also be used by the CLI.
 
-## GitHub Actions credentials
+## GitHub-hosted signing and notarization
 
-The current workflow creates ad-hoc previews; it does not import a private key or
-notarize releases. To automate formal releases, use a separate release workflow
-and a protected `macos-release` GitHub Environment. Restrict the Environment to
-release branches or tags and require a maintainer's approval before releasing its
-secrets. Regular pull request jobs must not reference this Environment.
+[Sign and notarize macOS release](../.github/workflows/macos-release.yaml) runs on
+GitHub-hosted macOS runners. Ordinary PR builds stay credential-free. The release
+workflow is dispatched from `master` with an existing `vMAJOR.MINOR.PATCH` tag;
+it rejects tags whose commit is not already merged into `master`, and rejects a
+tag that differs from the app version. It resolves the tag to an exact commit
+before building.
 
-The signing job needs an encrypted `.p12` containing the Developer ID Application
-certificate **and private key**, encoded as Base64 in an Environment Secret, plus
-its password in a separate Secret. Base64 is not encryption. For notarization,
-use either Apple account details with a dedicated app-specific password, or an
-App Store Connect team API private key with its key ID and issuer ID. A local
-Keychain profile is not automatically available on GitHub runners.
+Compilation happens in a separate job with no signing credentials. The protected
+signing job downloads only the immutable artifact ID produced by that build in
+the same run. It signs both architectures, submits to Apple, waits for acceptance,
+staples, verifies the final archives with Gatekeeper, and uploads one artifact
+containing both signed ZIPs, `SHA256SUMS-macos-signed`, and `omnilyrics.rb`.
+Neither job publishes a release or writes to the repository; both tokens are
+read-only. Use the release and Cask instructions above to publish the outputs.
+The signing job does not launch the application or run tests with credentials.
 
-Use a GitHub-hosted macOS runner. Import the certificate into a temporary Keychain
-under `RUNNER_TEMP`, register a temporary notarytool profile, and run the signing
-and notarization scripts above. Create sensitive files with owner-only permissions.
-Pass Secrets through step environment variables, never as interpolated shell
-source; do not enable shell tracing or upload credential files as artifacts. An
-`always()` cleanup step should delete the temporary Keychain and credential files.
+### One-time repository configuration
 
-Pin release Actions to reviewed commit hashes. Keep the job token read-only until
-the publishing job needs `contents: write`. Environment protection does not make
-arbitrary workflow code safe: authorized steps can read their Secrets. Never run
-untrusted PR code in a job with signing credentials. Review changes to release
-workflows and their scripts before approving a release.
+In **Settings → Environments**, create `macos-release` **before running the
+workflow**. Add a required maintainer reviewer and allow deployments only from
+the `master` branch. Review each requested tag and resolved commit before approval.
+A solo maintainer must leave “Prevent self-review” unchecked to approve their own
+manual run. Workflow YAML cannot enforce these server-side protection settings.
+Review changes to this workflow and `build/` before merging them. Protect `master`
+and release tags from unreviewed changes according to your repository policy.
 
-See [GitHub's certificate import guide](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications)
-and [Environment protection](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+Set these **Environment Secrets**, not ordinary repository-wide secrets:
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12_BASE64` | Base64 of an encrypted `.p12` containing a Developer ID Application certificate **and its private key** |
+| `MACOS_CERTIFICATE_PASSWORD` | Password chosen when exporting the `.p12` |
+| `APPLE_ID` | Apple account email belonging to the certificate's team |
+| `APPLE_APP_SPECIFIC_PASSWORD` | Dedicated app-specific password for notarization |
+
+Set these **Environment Variables**:
+
+| Variable | Value |
+| --- | --- |
+| `APPLE_TEAM_ID` | Ten-character developer team ID from the certificate |
+| `MACOS_SIGNING_IDENTITY` | Full `Developer ID Application: NAME (TEAM_ID)` identity or its SHA-1 fingerprint |
+
+Export the certificate and private key yourself from **Keychain Access → My
+Certificates** as a password-protected `.p12`. Base64 is not encryption. To send
+that file directly to the Environment Secret without printing its contents:
+
+```bash
+base64 -i /path/to/DeveloperID.p12 | gh secret set MACOS_CERTIFICATE_P12_BASE64 \
+  --repo zzxzzk115/OmniLyrics --env macos-release
+```
+
+Enter the other Secrets in GitHub's Environment settings or use `gh secret set`
+without `--body` for its interactive prompt. Do not paste passwords, the `.p12`,
+or private keys into chat, commits, release assets or command arguments. Delete
+the exported file securely according to your own backup policy once configured.
+A local `omnilyrics-notary` Keychain profile does not transfer to GitHub runners.
+The workflow currently uses Apple ID credentials; App Store Connect API-key
+authentication is an alternative that would require adapting the import step.
+
+After this workflow is merged into `master` and the release tag exists:
+
+```bash
+gh workflow run macos-release.yaml --repo zzxzzk115/OmniLyrics \
+  --ref master -f tag=v0.4.2
+```
+
+Approve the `macos-release` deployment in Actions after checking its source. Apple
+submission timeouts fail the job without publishing incomplete assets. Re-running
+creates a new temporary signing keychain and submits again. Already published
+release files must not be overwritten; build a new version if the signed files
+have changed.
+
+The certificate and notary profile live in a temporary keychain under
+`RUNNER_TEMP`, with owner-only credential files and a random keychain password.
+Secrets are passed as environment variables; shell tracing is disabled. Cleanup
+runs on exit and in an `always()` workflow step, and GitHub destroys the hosted
+runner after the job. Release Actions are pinned to full commit hashes. No
+self-hosted runner, long-lived Mac access, or private key export is needed on a
+maintainer's machine during subsequent releases.
+
+Environment approval does not make arbitrary workflow code safe: approved steps
+can access their Secrets. Never add `pull_request_target`, untrusted PR checkout,
+or arbitrary external artifact inputs to the signing job.
+
+See [GitHub's certificate import guide](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications),
+[Environment protection](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments),
+and [security guidance for public repositories](https://docs.github.com/en/actions/reference/security/secure-use#hardening-for-self-hosted-runners).
 
 References: [Apple Developer ID](https://developer.apple.com/developer-id/),
 [Avalonia macOS deployment](https://docs.avaloniaui.net/docs/deployment/macos),
