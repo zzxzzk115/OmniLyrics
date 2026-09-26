@@ -18,6 +18,7 @@ internal static class ProviderChecks
     {
         await SpotifyAsync();
         await YesPlayMusicAsync();
+        await YesPlayMusicPollingAsync();
         Console.WriteLine($"{_passed} additional favorites checks passed");
         Directory.Delete(UserConfiguration.DirectoryPath, true);
     }
@@ -177,6 +178,56 @@ internal static class ProviderChecks
         catch (OperationCanceledException) { Check("Cancelled QR login cannot save credentials", UserConfiguration.ReadYesPlayMusicCookie() == null); }
         try { UserConfiguration.SaveYesPlayMusicCookie("x\r\nInjected: header"); throw new Exception("Invalid cookie accepted"); }
         catch (InvalidDataException) { Check("Cookie header injection is rejected", true); }
+    }
+    private static async Task YesPlayMusicPollingAsync()
+    {
+        var state = new PlayerState { Title = "Song", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromSeconds(120), SourceApp = "YesPlayMusic" };
+        var clock = new PollingTime();
+        var reads = 0; var id = 12; var blocked = false; var liked = true;
+        using var api = new YesPlayMusicFavorites(new Handler(async request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/player") return Json(new { currentTrack = new { id, name = "Song", ar = new[] { new { name = "Artist" } }, al = new { name = "Album" }, dt = 120000 } });
+            if (path == "/user/account") return Json(new { code = 200, profile = new { userId = 15 } });
+            if (path == "/likelist")
+            {
+                reads++;
+                await Task.Delay(40);
+                return blocked ? Json(new { code = 405 }, HttpStatusCode.MethodNotAllowed)
+                    : Json(new { code = 200, ids = liked ? new[] { 12 } : Array.Empty<int>() });
+            }
+            if (path == "/like") { liked = QueryHelpers.ParseQuery(request.RequestUri.Query)["like"] == "true"; return Json(new { code = 200 }); }
+            throw new Exception("Unexpected request");
+        }), clock);
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => api.GetFavoriteAsync(state)));
+        Check("Concurrent GUI and widget polls share one cloud favorite read", reads == 1 && results.All(r => r is { IsFavorite: true }));
+        clock.Advance(31); blocked = true;
+        Check("Transient library failure retains the recent confirmed state", (await api.GetFavoriteAsync(state)) is { IsFavorite: true } && reads == 2);
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => api.GetFavoriteAsync(state)));
+        Check("Rate-limit backoff avoids repeated library requests", reads == 2);
+        id = 13;
+        Check("A cached favorite never follows a different local song ID", await api.GetFavoriteAsync(state) == null && reads == 2);
+        id = 12; clock.Advance(91);
+        Check("An unavailable library cannot keep a stale favorite forever", await api.GetFavoriteAsync(state) == null);
+        clock.Advance(31); blocked = false; liked = false;
+        var current = await api.GetFavoriteAsync(state);
+        Check("Library reads recover after backoff and refresh external changes", current is { IsFavorite: false });
+        var beforeWrite = reads;
+        Check("Explicit writes bypass the cache and confirm the new state", (await api.SetFavoriteAsync(state, current!, true)) is { IsFavorite: true } && reads == beforeWrite + 1);
+        Check("Subsequent polls reuse the confirmed write without another library request", (await api.GetFavoriteAsync(state)) is { IsFavorite: true } && reads == beforeWrite + 1);
+        using var cancel = new CancellationTokenSource(); cancel.Cancel();
+        Check("Cancelled polling returns safely without consuming the cache lock", await api.GetFavoriteAsync(state, cancel.Token) == null && await api.GetFavoriteAsync(state) != null);
+        if (!Path.GetFullPath(UserConfiguration.DirectoryPath).StartsWith(Path.Combine(Path.GetTempPath(), "omnilyrics-favorites-"), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Credential test requires the isolated temporary configuration.");
+        liked = false; UserConfiguration.SaveYesPlayMusicCookie("MUSIC_U=polling-test;");
+        Check("Changing authorization invalidates the previous account's favorite cache", (await api.GetFavoriteAsync(state)) is { IsFavorite: false });
+        UserConfiguration.ClearYesPlayMusicCookie();
+    }
+    private sealed class PollingTime : TimeProvider
+    {
+        private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(int seconds) => _now = _now.AddSeconds(seconds);
     }
     private sealed class Handler : HttpMessageHandler
     {

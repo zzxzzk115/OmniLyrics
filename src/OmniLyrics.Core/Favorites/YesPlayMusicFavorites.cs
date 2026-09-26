@@ -12,8 +12,25 @@ public enum YesPlayMusicQrStatus { AwaitingScan, AwaitingConfirmation }
 public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
 {
     private readonly HttpClient _http;
-    public YesPlayMusicFavorites(HttpMessageHandler? handler = null) => _http = new(handler ?? new HttpClientHandler
-        { UseProxy = false, AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly TimeProvider _time;
+    private readonly SemaphoreSlim _favoriteGate = new(1, 1);
+    private FavoriteState? _cached;
+    private string? _cachedCookie;
+    private DateTimeOffset _cachedAt, _retryAfter;
+    public YesPlayMusicFavorites(HttpMessageHandler? handler = null, TimeProvider? timeProvider = null)
+    {
+        _time = timeProvider ?? TimeProvider.System;
+        _http = new(handler ?? new HttpClientHandler
+            { UseProxy = false, AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(10) };
+    }
+    private void Remember(FavoriteState state, string? cookie)
+    {
+        _cached = state; _cachedCookie = cookie;
+        _cachedAt = _time.GetUtcNow(); _retryAfter = DateTimeOffset.MinValue;
+    }
+    private static bool Transient(HttpRequestException e) => e.StatusCode == null
+        || (int)e.StatusCode is 405 or 408 or 429 or >= 500;
+
 
     private async Task<JsonElement> ApiAsync(string path, CancellationToken token, string? cookie, Dictionary<string, string?>? query = null)
     {
@@ -116,10 +133,34 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
     {
         try
         {
-            var cookie = UserConfiguration.ReadYesPlayMusicCookie();
-            // Try the local Web API even without OmniLyrics credentials. Some local
-            // services supply their existing session; only require QR login if it rejects access.
-            return await ReadAsync(expected, cookie, token).ConfigureAwait(false);
+            await _favoriteGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                var cookie = UserConfiguration.ReadYesPlayMusicCookie();
+                if (cookie != _cachedCookie) { _cached = null; _retryAfter = DateTimeOffset.MinValue; _cachedCookie = cookie; }
+                var id = await CurrentIdAsync(expected, token).ConfigureAwait(false);
+                if (id == null || UserConfiguration.ReadYesPlayMusicCookie() != cookie) return null;
+                var now = _time.GetUtcNow();
+                var sameTrack = _cached?.TrackId == id && _cached.MediaKey == LyricsCache.TrackKey(expected);
+                if (sameTrack && now - _cachedAt < TimeSpan.FromSeconds(30)) return _cached;
+                var recent = sameTrack && now - _cachedAt < TimeSpan.FromMinutes(2) ? _cached : null;
+                if (now < _retryAfter) return recent;
+                try
+                {
+                    // GUI and shared-service clients use the same gate/cache. Always
+                    // verify the local track, but avoid repeated cloud library reads.
+                    var result = await ReadAsync(expected, cookie, token).ConfigureAwait(false);
+                    if (result != null) Remember(result, cookie);
+                    else _cached = null;
+                    return result;
+                }
+                catch (HttpRequestException e) when (Transient(e))
+                {
+                    _retryAfter = _time.GetUtcNow().AddSeconds(30);
+                    return recent;
+                }
+            }
+            finally { _favoriteGate.Release(); }
         }
         catch (Exception e) when (Unavailable(e)) { return null; }
     }
@@ -127,25 +168,32 @@ public sealed class YesPlayMusicFavorites : ITrackFavorites, IDisposable
     {
         try
         {
-            var cookie = UserConfiguration.ReadYesPlayMusicCookie();
-            if (previous.MediaKey != LyricsCache.TrackKey(expected)
-                || await CurrentIdAsync(expected, token).ConfigureAwait(false) != previous.TrackId
-                || UserConfiguration.ReadYesPlayMusicCookie() != cookie
-                || await UserIdAsync(cookie, token).ConfigureAwait(false) == null) return null;
-            var result = await ApiAsync("like", token, cookie, new() { ["id"] = previous.TrackId, ["like"] = favorite ? "true" : "false" }).ConfigureAwait(false);
-            if (result.GetProperty("code").GetInt32() != 200) return null;
-            for (var attempt = 0; attempt < 4; attempt++)
+            await _favoriteGate.WaitAsync(token).ConfigureAwait(false);
+            try
             {
-                if (attempt > 0) await Task.Delay(400, token).ConfigureAwait(false);
-                var confirmed = await ReadAsync(expected, cookie, token).ConfigureAwait(false);
-                if (confirmed == null || confirmed.TrackId != previous.TrackId) return null;
-                if (confirmed.IsFavorite == favorite) return confirmed;
+                var cookie = UserConfiguration.ReadYesPlayMusicCookie();
+                if (previous.MediaKey != LyricsCache.TrackKey(expected)
+                    || await CurrentIdAsync(expected, token).ConfigureAwait(false) != previous.TrackId
+                    || UserConfiguration.ReadYesPlayMusicCookie() != cookie
+                    || await UserIdAsync(cookie, token).ConfigureAwait(false) == null) return null;
+                _cached = null;
+                var result = await ApiAsync("like", token, cookie, new() { ["id"] = previous.TrackId, ["like"] = favorite ? "true" : "false" }).ConfigureAwait(false);
+                if (result.GetProperty("code").GetInt32() != 200) return null;
+                for (var attempt = 0; attempt < 4; attempt++)
+                {
+                    if (attempt > 0) await Task.Delay(400, token).ConfigureAwait(false);
+                    var confirmed = await ReadAsync(expected, cookie, token).ConfigureAwait(false);
+                    if (confirmed == null || confirmed.TrackId != previous.TrackId) return null;
+                    if (confirmed.IsFavorite == favorite) { Remember(confirmed, cookie); return confirmed; }
+                }
             }
+            catch (HttpRequestException e) when (Transient(e)) { _retryAfter = _time.GetUtcNow().AddSeconds(30); }
+            finally { _favoriteGate.Release(); }
         }
         catch (Exception e) when (Unavailable(e)) { }
         return null;
     }
-    private static bool Unavailable(Exception e) => e is HttpRequestException or TaskCanceledException or JsonException
+    private static bool Unavailable(Exception e) => e is HttpRequestException or OperationCanceledException or JsonException
         or InvalidOperationException or KeyNotFoundException or FormatException;
     public void Dispose() => _http.Dispose();
 }
