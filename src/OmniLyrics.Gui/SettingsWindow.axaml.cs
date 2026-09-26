@@ -18,7 +18,11 @@ public partial class SettingsWindow : Window
 {
     public bool KeepAlive { get; set; }
     private bool _reloading;
+    private bool _savingScale;
+    private double _solidBackgroundOpacity = 60;
+    private AppearanceSettings? _lastWindowState;
     private readonly ConfigurationWatcher _watcher;
+    private readonly WindowScale _windowScale;
     private CiderConnectionSettings? _loadedCider;
     private bool _settingPalette;
     private sealed record ThemeOption(string Label, ThemePalette? Palette = null, string? SavedName = null)
@@ -29,6 +33,15 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        InitializeMacEnvironment();
+        InitializeFavorites();
+        InitializeLan();
+        BlurMode.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty && !_reloading)
+                UpdateBlurOptions();
+        };
+        _windowScale = new WindowScale(this, size => ClientSize = size, scrollWhenConstrained: true);
         if (OperatingSystem.IsLinux())
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Dialog);
         Deactivated += (_, _) => ReleaseSearchFocus();
@@ -63,6 +76,20 @@ public partial class SettingsWindow : Window
         ReloadSettings();
     }
 
+    internal void RecoverWindowPlacement()
+    {
+        WindowState = WindowState.Normal;
+        _windowScale.SetSize(new Avalonia.Size(980, 760));
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen == null) return;
+        var work = screen.WorkingArea;
+        var size = Avalonia.PixelSize.FromSize(FrameSize ?? ClientSize, RenderScaling);
+        Position = new Avalonia.PixelPoint(work.X + Math.Max(0, (work.Width - size.Width) / 2),
+            work.Y + Math.Max(0, (work.Height - size.Height) / 2));
+    }
+
+    internal void OpenAbout() { SettingsSearch.Text = ""; SettingsTabs.SelectedItem = AboutTab; }
+
     private void ReloadSettings(bool preserveToken = false)
     {
         _reloading = true;
@@ -76,6 +103,8 @@ public partial class SettingsWindow : Window
             UserConfiguration.ValidateConfigurationText(UserConfiguration.ReadConfigurationText());
             LanguageMode.SelectedIndex = UserConfiguration.LoadLanguage() switch { "zh-CN" => 1, "en" => 2, _ => 0 };
             var appearance = UserConfiguration.LoadAppearance();
+            LoadScale(appearance.UiScale);
+            _lastWindowState = appearance;
             PresetMode.SelectedIndex = appearance.Preset switch { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
             ShowLogoMode.IsChecked = appearance.ShowLogo;
             ShowPlayerMode.IsChecked = appearance.ShowPlayerInfo;
@@ -92,6 +121,8 @@ public partial class SettingsWindow : Window
             ReloadThemePresets();
             OpacitySlider.Value = appearance.BackgroundOpacity * 100;
             BlurMode.IsChecked = appearance.UseBlur;
+            if (!appearance.UseBlur || appearance.BackgroundOpacity > 0) _solidBackgroundOpacity = appearance.BackgroundOpacity * 100;
+            UpdateBlurOptions();
             AppearanceStatus.Text = "";
             var lyrics = UserConfiguration.LoadLyrics();
             PrefetchEnabled.IsChecked = lyrics.Prefetch;
@@ -109,6 +140,8 @@ public partial class SettingsWindow : Window
             IntegrationMode.SelectedIndex = settings.Integration switch { "webapi" => 1, "mpris" => 2, _ => 0 };
             NoTokenMode.IsChecked = TokenMode.IsChecked != true;
             UpdateTokenHint();
+            ReloadFavorites(preserveToken);
+            ReloadLan(preserveToken);
         }
         catch
         {
@@ -118,6 +151,23 @@ public partial class SettingsWindow : Window
             TestButton.IsEnabled = false;
         }
         finally { _reloading = false; }
+    }
+
+    private void UpdateBlurOptions()
+    {
+        var useBlur = BlurMode.IsChecked == true;
+        BlurOpacityHint.IsVisible = useBlur;
+        if (useBlur)
+        {
+            if (OpacitySlider.IsEnabled && !_reloading) _solidBackgroundOpacity = OpacitySlider.Value;
+            OpacitySlider.Value = 0;
+            OpacitySlider.IsEnabled = false;
+        }
+        else
+        {
+            if (!OpacitySlider.IsEnabled) OpacitySlider.Value = _solidBackgroundOpacity;
+            OpacitySlider.IsEnabled = true;
+        }
     }
 
     private void UpdateTokenHint()
@@ -179,6 +229,48 @@ public partial class SettingsWindow : Window
     }
 
 
+    private static readonly double[] ScalePresets = [1, 1.25, 1.5, 1.75, 2];
+
+    private void LoadScale(double? scale)
+    {
+        var reloading = _reloading;
+        _reloading = true;
+        try
+        {
+            var index = scale is { } value ? Array.IndexOf(ScalePresets, value) : -1;
+            UiScaleMode.SelectedIndex = scale == null ? 0 : index < 0 ? 6 : index + 1;
+            CustomUiScale.Value = (decimal)((scale ?? 1) * 100);
+            CustomScaleRow.IsVisible = UiScaleMode.SelectedIndex == 6;
+        }
+        finally { _reloading = reloading; }
+    }
+
+    private void UiScaleMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_reloading || CustomScaleRow == null || CustomUiScale == null || UiScaleMode.SelectedIndex < 0) return;
+        CustomScaleRow.IsVisible = UiScaleMode.SelectedIndex == 6;
+        if (UiScaleMode.SelectedIndex == 6) return;
+        SaveScale(UiScaleMode.SelectedIndex == 0 ? null : ScalePresets[UiScaleMode.SelectedIndex - 1]);
+    }
+
+    private void CustomUiScale_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (!_reloading && UiScaleMode?.SelectedIndex == 6 && e.NewValue is >= 75 and <= 300)
+            SaveScale((double)e.NewValue.Value / 100);
+    }
+
+    private void SaveScale(double? scale)
+    {
+        try
+        {
+            _savingScale = true;
+            AppearancePreferences.Save(AppearancePreferences.Current with { UiScale = scale });
+            _watcher.AcceptCurrent();
+        }
+        catch { AppearanceStatus.Text = Localization.Get("PreferencesSaveError"); }
+        finally { _savingScale = false; }
+    }
+
     private void ApplyButton_Click(object? sender, RoutedEventArgs e)
     {
         try
@@ -192,8 +284,8 @@ public partial class SettingsWindow : Window
                 ApproximateMode.IsChecked == true, TranslationMode.IsChecked == true,
                 (double)(LyricFontSize.Value ?? 32), (double)(TranslationSize.Value ?? 18),
                 Rgb(TextColorPicker.Color), Rgb(HighlightColorPicker.Color), Rgb(BackgroundColorPicker.Color),
-                OpacitySlider.Value / 100, BlurMode.IsChecked == true,
-                ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color));
+                BlurMode.IsChecked == true ? 0 : OpacitySlider.Value / 100, BlurMode.IsChecked == true,
+                ThemeMode.SelectedIndex == 1 ? "light" : "dark", Rgb(AccentColorPicker.Color), AppearancePreferences.Current.UiScale);
             if (PlayerLyricsEnabled.IsChecked != true && QQLyricsEnabled.IsChecked != true && NeteaseLyricsEnabled.IsChecked != true)
             {
                 SettingsTabs.SelectedItem = LyricsTab;
@@ -206,6 +298,8 @@ public partial class SettingsWindow : Window
                 PreferredLyricSourceMode.SelectedIndex == 1 ? "netease" : "qq");
             UserConfiguration.SavePreferences(appearance, lyrics,
                 changedCider ? cider : null, changedCider && cider.Authentication == "token" ? TokenInput.Text : null);
+            if (SpotifyClientIdInput.Text != _loadedSpotifyClientId) UserConfiguration.SaveSpotifyClientId(SpotifyClientIdInput.Text ?? "");
+            SaveLanSharing();
             _watcher.AcceptCurrent();
             AppearancePreferences.Refresh();
             ReloadSettings();
@@ -220,6 +314,9 @@ public partial class SettingsWindow : Window
         var key = (tab.Tag?.ToString() ?? "General").Split(' ')[0];
         PageTitle.Text = Localization.Get(key);
         PageSubtitle.Text = Localization.Get(key + "Subtitle");
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => tab.BringIntoView());
+        if (tab == LanTab) _ = RefreshLanStatusAsync();
+        if (tab == MacEnvironmentTab) _ = RefreshMacEnvironmentAsync();
     }
 
     private async void EditConfiguration_Click(object? sender, RoutedEventArgs e) => await new ConfigurationEditorWindow().ShowDialog(this);
@@ -330,7 +427,7 @@ public partial class SettingsWindow : Window
                     pair.Value.English == status.Text || pair.Value.Chinese == status.Text);
                 if (entry.Key != null) status.Text = Localization.Get(entry.Key);
             }
-            foreach (var combo in new[] { PresetMode, IntegrationMode, ThemeMode, LanguageMode, SearchStrategyMode, MatchMode, PreferredLyricSourceMode })
+            foreach (var combo in new[] { PresetMode, IntegrationMode, ThemeMode, LanguageMode, UiScaleMode, SearchStrategyMode, MatchMode, PreferredLyricSourceMode })
             { var index = combo.SelectedIndex; combo.SelectedIndex = -1; combo.SelectedIndex = index; }
             var name = ThemePresetName.Text;
             ReloadThemePresets((ThemePresetMode.SelectedItem as ThemeOption)?.SavedName);
@@ -338,6 +435,9 @@ public partial class SettingsWindow : Window
             LanguageMode.SelectedIndex = UserConfiguration.LoadLanguage() switch { "zh-CN" => 1, "en" => 2, _ => 0 };
             VersionText.Text = Localization.Format("Version", ApplicationInfo.Version);
             UpdateTokenHint();
+            RenderMacEnvironment();
+            ReloadLan(true);
+            SetYesPlayMusicStatus(_yesPlayMusicStatusKey);
             SettingsTabs_SelectionChanged(this, null!);
         }
         catch { StatusText.Text = Localization.Get("ConfigReadError"); }
@@ -346,9 +446,13 @@ public partial class SettingsWindow : Window
 
     private void RefreshWindowState()
     {
-        LockedMode.IsChecked = AppearancePreferences.Current.Locked;
-        PresetMode.SelectedIndex = AppearancePreferences.Current.Preset switch
-        { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
+        var current = AppearancePreferences.Current;
+        if (_lastWindowState?.Locked != current.Locked) LockedMode.IsChecked = current.Locked;
+        if (_lastWindowState?.Preset != current.Preset)
+            PresetMode.SelectedIndex = current.Preset switch
+            { "compact" => 1, "focus" => 2, "portrait" => 3, "fullscreen" => 4, _ => 0 };
+        if (!_savingScale && _lastWindowState?.UiScale != current.UiScale) LoadScale(current.UiScale);
+        _lastWindowState = current;
     }
 
     private void ResetAppearanceButton_Click(object? sender, RoutedEventArgs e)
@@ -364,6 +468,7 @@ public partial class SettingsWindow : Window
         var tabs = SettingsTabs.Items.OfType<TabItem>().ToList();
         foreach (var tab in tabs)
         {
+            if (tab == MacEnvironmentTab && !OperatingSystem.IsMacOS()) { tab.IsVisible = false; continue; }
             var tags = (tab.Tag?.ToString() ?? "").Split(' ');
             var searchable = string.Join(" ", tags.Select(tag => Localization.Catalog.TryGetValue(tag, out var value)
                 ? $"{tag} {value.English} {value.Chinese}" : tag));
@@ -390,7 +495,12 @@ public partial class SettingsWindow : Window
                     var text = control is TextBlock label ? label.Text : control is ContentControl { Content: string content } ? content : null;
                     return text != null && terms.Any(term => text.Contains(term, StringComparison.OrdinalIgnoreCase));
                 });
-                match?.BringIntoView();
+                if (selected == PlayerConnectionsTab && match != null)
+                {
+                    var card = match.GetLogicalAncestors().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("card"));
+                    (card ?? match).BringIntoView();
+                }
+                else match?.BringIntoView();
             }, Avalonia.Threading.DispatcherPriority.Loaded);
         }
     }

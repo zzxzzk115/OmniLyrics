@@ -29,6 +29,8 @@ public sealed class JsonLyricsCli(IPlayerBackend backend) : BaseLyricsCli(backen
         var output = JsonSerializer.Serialize(new
         {
             available = state != null,
+            remoteDevice = (Backend as SharedPlayerSession)?.RemoteDeviceName,
+            error = (Backend as SharedPlayerSession)?.ServiceError,
             title = state?.Title ?? "",
             artist = state == null ? "" : string.Join(", ", state.Artists),
             sourceApp = state?.SourceApp ?? "",

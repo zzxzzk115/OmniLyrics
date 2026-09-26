@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -12,7 +12,8 @@ public class CommandServer : IDisposable
     public CommandServer(IPlayerBackend backend, string listenAddress = "127.0.0.1", int port = ClientServerCommonDefine.ControlPort)
     {
         _backend = backend;
-        var endpoint = new IPEndPoint(IPAddress.Parse(listenAddress), port);
+        var address = IPAddress.Parse(listenAddress);
+        var endpoint = new IPEndPoint(IPAddress.IsLoopback(address) ? address : IPAddress.Loopback, port);
         _udp = new UdpClient(endpoint.AddressFamily);
         try
         {
@@ -27,6 +28,7 @@ public class CommandServer : IDisposable
         while (!token.IsCancellationRequested)
         {
             var result = await _udp.ReceiveAsync(token);
+            if (!IPAddress.IsLoopback(result.RemoteEndPoint.Address) || result.Buffer.Length > 128) continue;
             string cmd = Encoding.UTF8.GetString(result.Buffer);
             _ = HandleCommandAsync(cmd);
         }
@@ -47,7 +49,7 @@ public class CommandServer : IDisposable
 
         if (cmd.StartsWith("seek "))
         {
-            if (double.TryParse(cmd.Substring(5), out double sec))
+            if (double.TryParse(cmd.Substring(5), out double sec) && double.IsFinite(sec) && sec >= 0 && sec < TimeSpan.MaxValue.TotalSeconds / 2)
                 return _backend.SeekAsync(TimeSpan.FromSeconds(sec));
         }
 

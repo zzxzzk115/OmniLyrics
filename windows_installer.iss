@@ -1,6 +1,11 @@
-﻿[Setup]
+#ifndef MyAppVersion
+  #error "Use package_win64.ps1 to supply the project version."
+#endif
+
+[Setup]
 AppName=OmniLyrics
-AppVersion=0.3.0
+AppVersion={#MyAppVersion}
+SetupIconFile=src\OmniLyrics.Gui\Assets\app.ico
 DefaultDirName={commonpf}\OmniLyrics
 DefaultGroupName=OmniLyrics
 OutputBaseFilename=OmniLyrics-Setup

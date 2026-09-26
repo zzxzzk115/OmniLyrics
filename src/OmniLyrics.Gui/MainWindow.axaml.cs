@@ -6,33 +6,81 @@ using Avalonia.Media;
 using OmniLyrics.Gui.Models;
 using OmniLyrics.Core;
 using Avalonia.VisualTree;
+using Avalonia.LogicalTree;
 using System.Linq;
+using Avalonia.Threading;
+using OmniLyrics.Gui.Utils;
 
 namespace OmniLyrics.Gui;
 
 public partial class MainWindow : Window
 {
+    private readonly WindowScale _windowScale;
     private bool _hovered;
+    private readonly System.Func<bool?> _pointerIsOverWindow;
+    private readonly DispatcherTimer _overlayHideTimer = new() { Interval = System.TimeSpan.FromMilliseconds(300) };
     private string? _appliedPreset;
     private Size? _pendingPresetSize;
     private WindowEdge? _resizeEdge;
+    private readonly WindowsBackdrop _windowsBackdrop = new();
+    private readonly HyprlandBackdrop _hyprlandBackdrop = new();
     public bool IsLocked => AppearancePreferences.Current.Locked;
     public MainWindow() : this(new LyricsViewModel()) { }
-    public MainWindow(LyricsViewModel viewModel)
+    public MainWindow(LyricsViewModel viewModel) : this(viewModel, null) { }
+    internal MainWindow(LyricsViewModel viewModel, System.Func<bool?>? pointerIsOverWindow)
     {
         InitializeComponent();
-        // Desktop lyrics are a utility window. X11 tiling managers otherwise
-        // restore a full-screen overlay into a tile instead of its preset size.
-        if (System.OperatingSystem.IsLinux())
+        _pointerIsOverWindow = pointerIsOverWindow ?? (() => MacWindowPointer.IsOver(this));
+        _overlayHideTimer.Tick += (_, _) =>
+        {
+            if (!ShouldShowOverlay && _pointerIsOverWindow() == true)
+            {
+                // A native move can leave hover stale until the next real motion.
+                // Keep checking until it leaves; do not latch a synthetic hover.
+                return;
+            }
+            _overlayHideTimer.Stop();
+            SetOverlayVisible(ShouldShowOverlay);
+        };
+        _windowScale = new WindowScale(this, size => ClientSize = size);
+        foreach (var button in this.GetLogicalDescendants().OfType<Button>())
+            button.PropertyChanged += (_, e) =>
+            {
+                // Let a captured press complete before hiding its toolbar. This also
+                // handles capture cancellation without leaving the toolbar pinned.
+                if (e.Property == Button.IsPressedProperty)
+                    Avalonia.Threading.Dispatcher.UIThread.Post(UpdateOverlay);
+            };
+        // Hyprland otherwise restores the overlay into a tile. Other window
+        // managers may disallow fullscreen for utility windows, so keep their
+        // ordinary window type.
+        if (System.OperatingSystem.IsLinux() && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("HYPRLAND_INSTANCE_SIGNATURE")))
             X11Properties.SetNetWmWindowType(this, Avalonia.Controls.Platform.X11NetWmWindowType.Utility);
         DataContext = viewModel;
-        TopBar.IsVisible = false; // Hidden until mouse hover
         AppearancePreferences.Changed += ApplyAppearance;
         Localization.Changed += RefreshLockAction;
         ApplyAppearance();
         RootBorder.Measuring = ApplyResponsiveLayout;
         Closed += (_, _) => AppearancePreferences.Changed -= ApplyAppearance;
         Closed += (_, _) => Localization.Changed -= RefreshLockAction;
+        Closed += (_, _) => _hyprlandBackdrop.Dispose();
+        Closed += (_, _) => _overlayHideTimer.Stop();
+        Opened += (_, _) => ApplyBackdrop(force: true);
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty)
+            {
+                if (IsVisible) ApplyBackdrop(force: true);
+                else
+                {
+                    _hovered = false;
+                    _overlayHideTimer.Stop();
+                    SetOverlayVisible(false);
+                }
+            }
+            if (e.Property == ActualTransparencyLevelProperty)
+                ApplyWindowsBackdrop();
+        };
         Closing += (s, e) =>
         {
             if (e.CloseReason is WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
@@ -58,26 +106,32 @@ public partial class MainWindow : Window
     private void ApplyAppearance()
     {
         var settings = AppearancePreferences.Current;
+        var palette = LyricPalette.Create(settings);
         var reading = settings.Preset is "focus" or "portrait" or "fullscreen";
         var portrait = settings.Preset == "portrait";
         var fullscreen = settings.Preset == "fullscreen";
         var resize = _appliedPreset != settings.Preset;
         // Clear the preceding reading layout's constraints before shrinking
         // into a floating preset. Apply both native dimensions together below.
-        MinWidth = 380;
-        MinHeight = reading ? 440 : (settings.Preset == "compact" ? 50 + settings.FontSize * 1.5 : 80 + settings.FontSize * 2.3)
-            + (settings.ShowTranslation ? settings.TranslationFontSize * 1.5 : 0);
+        _windowScale.SetMinimum(new Size(380, reading ? 440 : (settings.Preset == "compact" ? 50 + settings.FontSize * 1.5 : 80 + settings.FontSize * 2.3)
+            + (settings.ShowTranslation ? settings.TranslationFontSize * 1.5 : 0)));
         CanResize = true;
         PrimaryLyric.FontSize = ReadingLyric.FontSize = settings.FontSize;
         PrimaryLyric.Height = settings.FontSize * 1.5;
-        PrimaryLyric.HighlightBrush = ReadingLyric.HighlightBrush = Brush.Parse(settings.HighlightColor);
-        PrimaryLyric.BaseBrush = ReadingLyric.BaseBrush = Brush.Parse(settings.TextColor);
+        PrimaryLyric.HighlightBrush = ReadingLyric.HighlightBrush = new SolidColorBrush(palette.Highlight);
+        PrimaryLyric.BaseBrush = ReadingLyric.BaseBrush = new SolidColorBrush(palette.Text);
+        PrimaryLyric.DrawShadow = ReadingLyric.DrawShadow = palette.Translucent;
+        PrimaryLyric.OutlineBrush = ReadingLyric.OutlineBrush = new SolidColorBrush(palette.Outline);
+        RequestedThemeVariant = palette.Dark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+        foreach (var group in new[] { EarlierGroup, PreviousGroup, NextGroup, LaterGroup })
+            group.Opacity = palette.Translucent ? 1 : group == EarlierGroup || group == LaterGroup ? .25 : .48;
+        ReadingTranslation.Opacity = palette.Translucent ? 1 : .85;
         ClassicTranslation.FontSize = ReadingTranslation.FontSize = settings.TranslationFontSize;
-        ClassicTranslation.Foreground = ReadingTranslation.Foreground = Brush.Parse(settings.TextColor);
+        ClassicTranslation.Foreground = ReadingTranslation.Foreground = new SolidColorBrush(palette.Text);
         foreach (var line in new[] { EarlierTranslation, PreviousTranslation, NextTranslation, LaterTranslation })
-        { line.Foreground = Brush.Parse(settings.TextColor); line.FontSize = System.Math.Max(12, settings.TranslationFontSize * .85); }
+        { line.Foreground = new SolidColorBrush(palette.Text); line.FontSize = System.Math.Max(12, settings.TranslationFontSize * .85); }
         foreach (var line in new[] { EarlierContext, PreviousContext, NextContext, LaterContext, SecondLyric })
-        { line.Foreground = Brush.Parse(settings.TextColor); line.FontSize = settings.FontSize * .78; }
+        { line.Foreground = new SolidColorBrush(palette.Text); line.FontSize = settings.FontSize * .78; }
         LyricsPanel.IsVisible = !reading;
         ReadingLayout.IsVisible = reading;
         ReadingLyric.AlignLeft = false;
@@ -116,21 +170,17 @@ public partial class MainWindow : Window
             };
             var leavingFullscreen = IsVisible && WindowState == WindowState.FullScreen && !fullscreen;
             _pendingPresetSize = leavingFullscreen ? size : null;
-            WindowState = fullscreen ? WindowState.FullScreen : WindowState.Normal;
             // Full-screen restoration is asynchronous: the window manager's
             // restored geometry would overwrite a resize sent before it finishes.
-            if (!leavingFullscreen) SetPresetSize(size, !fullscreen);
+            // While entering fullscreen, let the window manager choose the size:
+            // a following normal-size request can cancel fullscreen on X11.
+            if (!leavingFullscreen && !fullscreen) _windowScale.SetSize(size);
+            WindowState = fullscreen ? WindowState.FullScreen : WindowState.Normal;
         }
-        ApplyResponsiveLayout(new Size(Bounds.Width > 0 ? Bounds.Width : Width, Bounds.Height > 0 ? Bounds.Height : Height));
+        ApplyResponsiveLayout(_windowScale.ToContentSize(new Size(Bounds.Width > 0 ? Bounds.Width : Width, Bounds.Height > 0 ? Bounds.Height : Height)));
+        ApplyBackdrop();
         UpdateOverlay();
         UpdateLockAction();
-    }
-
-    private void SetPresetSize(Size size, bool resizeClient)
-    {
-        Width = size.Width;
-        Height = size.Height;
-        if (IsVisible && resizeClient) ClientSize = size;
     }
 
     protected override void OnResized(WindowResizedEventArgs e)
@@ -141,7 +191,7 @@ public partial class MainWindow : Window
         {
             if (_pendingPresetSize != size || WindowState != WindowState.Normal) return;
             _pendingPresetSize = null;
-            SetPresetSize(size, true);
+            _windowScale.SetSize(size);
         }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
@@ -183,14 +233,55 @@ public partial class MainWindow : Window
         QuickPlayback.HorizontalAlignment = vertical || fullscreen ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Center;
     }
 
+    private bool ShouldShowOverlay => _hovered || TopBar.GetVisualDescendants().OfType<Button>().Any(button => button.IsPressed);
+
     private void UpdateOverlay()
     {
-        TopBar.IsVisible = _hovered;
+        if (ShouldShowOverlay)
+        {
+            _overlayHideTimer.Stop();
+            SetOverlayVisible(true);
+        }
+        else if (TopBar.Opacity > 0 && !_overlayHideTimer.IsEnabled)
+        {
+            // Native dragging emits transient exits, with re-entry sometimes
+            // delayed until after release. Coalesce those exits so the controls
+            // do not flash. Entry and button presses remain immediate.
+            _overlayHideTimer.Start();
+        }
+    }
+
+    private void SetOverlayVisible(bool show)
+    {
+        // Keep the buttons arranged while hidden. Removing/reinserting them makes
+        // the compositor's hit-test scene lag behind fast pointer-entry clicks.
+        TopBar.Opacity = show ? 1 : 0;
+        TopBar.IsHitTestVisible = show;
+        TopBar.IsEnabled = show;
+    }
+
+    private void ApplyBackdrop(bool force = false)
+    {
         var settings = AppearancePreferences.Current;
-        RootBorder.Background = new SolidColorBrush(Color.Parse(settings.BackgroundColor), settings.BackgroundOpacity);
-        TransparencyLevelHint = settings.UseBlur
-            ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent]
+        RootBorder.Background = new SolidColorBrush(Color.Parse(settings.BackgroundColor), LyricPalette.BackgroundOpacity(settings));
+        TransparencyBackgroundFallback = new SolidColorBrush(Color.Parse(settings.BackgroundColor));
+        WindowTransparencyLevel[] levels = settings.UseBlur
+            ? [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
             : [WindowTransparencyLevel.Transparent];
+        // Avalonia.Native 11.3 skips an already-active level when reapplying hints,
+        // potentially selecting Transparent next. Do not resend identical hints.
+        if (!TransparencyLevelHint.SequenceEqual(levels)) TransparencyLevelHint = levels;
+        ApplyWindowsBackdrop();
+        if (IsVisible) _hyprlandBackdrop.Apply(settings.UseBlur, Title ?? "", force);
+    }
+
+    private void ApplyWindowsBackdrop()
+    {
+        var settings = AppearancePreferences.Current;
+        var blur = _windowsBackdrop.Apply(this, settings.UseBlur, settings.ThemeMode == "dark");
+        // If the framework reports None, its opaque fallback would cover the
+        // independently enabled DWM backdrop. Keep our tint on RootBorder only.
+        TransparencyBackgroundFallback = blur ? Brushes.Transparent : new SolidColorBrush(LyricPalette.Create(settings).Canvas);
     }
 
     private void LockButton_Click(object? sender, RoutedEventArgs e)
@@ -204,7 +295,7 @@ public partial class MainWindow : Window
     private void UpdateLockAction()
     {
         LockIcon.Data = (Geometry)Resources[IsLocked ? "lock_regular" : "unlock_regular"]!;
-        LockIcon.Foreground = (IBrush)Application.Current!.Resources[IsLocked ? "AccentBrush" : "LyricPrimary"]!;
+        LockIcon.Foreground = (IBrush)Application.Current!.Resources[IsLocked ? "LyricAccent" : "LyricPrimary"]!;
         Avalonia.Automation.AutomationProperties.SetName(LockAction, Localization.Get(IsLocked ? "UnlockWindow" : "LockWindow"));
     }
 
@@ -267,6 +358,8 @@ public partial class MainWindow : Window
     {
         base.OnPointerPressed(e);
 
+        if (e.Handled || IsButton(e.Source)) return;
+
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && ResizeEdgeAt(e.GetPosition(this)) is { } edge)
         {
             BeginResizeDrag(edge, e);
@@ -274,12 +367,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Source is Visual visual && (visual is Button || visual.GetVisualAncestors().Any(parent => parent is Button))) return;
-
         // Enable window dragging on left-button press
         if (!IsLocked && WindowState != WindowState.FullScreen && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             BeginMoveDrag(e);
     }
+
+    private static bool IsButton(object? source) => source is Visual visual
+        && (visual is Button || visual.GetVisualAncestors().Any(parent => parent is Button));
 
     private WindowEdge? ResizeEdgeAt(Point point)
     {
@@ -307,7 +401,7 @@ public partial class MainWindow : Window
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        var edge = ResizeEdgeAt(e.GetPosition(this));
+        var edge = IsButton(e.Source) ? null : ResizeEdgeAt(e.GetPosition(this));
         if (_resizeEdge == edge) return;
         _resizeEdge = edge;
         Cursor = new Cursor(edge switch

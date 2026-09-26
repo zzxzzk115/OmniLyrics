@@ -4,6 +4,7 @@
         xmlns:controls="clr-namespace:OmniLyrics.Gui.Controls"
         x:Class="OmniLyrics.Gui.MainWindow"
         Title="OmniLyrics · Lyrics"
+        Icon="/Assets/app.ico"
         Width="800"
         Height="150"
         SystemDecorations="None"
@@ -20,8 +21,14 @@
         https://avaloniaui.github.io/icons.html
      -->
     <Window.Styles>
+        <Style Selector="controls|AlignedTextBlock">
+            <Setter Property="Effect">
+                <DropShadowEffect Color="{DynamicResource LyricOutlineColor}" BlurRadius="3"
+                                  OffsetX="0" OffsetY="0" Opacity="{DynamicResource LyricShadowOpacity}" />
+            </Setter>
+        </Style>
         <Style Selector="Button">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource LyricControlSurface}" />
             <Setter Property="Padding" Value="9" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Width" Value="36" />
@@ -61,7 +68,7 @@
                   Background="Transparent"
                   ZIndex="10" VerticalAlignment="Top"
                   RowDefinitions="Auto,Auto"
-                  IsVisible="False">
+                  Opacity="0" IsHitTestVisible="False" IsEnabled="False">
 
                 <!-- Title bar -->
                 <Grid>
@@ -70,8 +77,11 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True" Margin="0,0,12,0">
-                        <Image x:Name="AppLogo" Source="/Assets/logo.png" Width="22" Height="22"
+                    <Border Background="{DynamicResource LyricControlSurface}" CornerRadius="8" Padding="6,0"
+                            HorizontalAlignment="Left" Margin="0,0,12,0">
+                    <StackPanel x:Name="ToolbarIdentity" Orientation="Horizontal" Spacing="10" ClipToBounds="True">
+                        <Image x:Name="AppLogo" Source="/Assets/AppIcon.iconset/icon_32x32@2x.png" Width="22" Height="22"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
                                VerticalAlignment="Center" />
 
                         <controls:AlignedTextBlock x:Name="HeaderText"
@@ -84,6 +94,7 @@
 
                                    Foreground="{DynamicResource LyricSecondary}" VerticalAlignment="Center" />
                     </StackPanel>
+                    </Border>
 
                     <!-- Toolbar -->
                     <StackPanel Grid.Column="1"
@@ -108,34 +119,34 @@
                                 AutomationProperties.Name="{Binding FavoriteLabel}">
                             <Grid>
                                 <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
-                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricAccent}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
                             </Grid>
                         </Button>
 
                         <!-- Prev Button -->
-                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                        <Button Click="PrevButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Previous}">
                             <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Click="PlayPauseButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <Grid>
                             <PathIcon
                                 Height="12"
                                 Width="12"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource play_regular}" />
-                        </Button>
-                        <Button Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                                Data="{StaticResource play_regular}" IsVisible="{Binding !Playing}" />
                             <PathIcon
                                 Height="12"
                                 Width="12"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource pause_regular}" />
+                                Data="{StaticResource pause_regular}" IsVisible="{Binding Playing}" />
+                            </Grid>
                         </Button>
 
                         <!-- Next Button -->
-                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                        <Button Click="NextButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Next}">
                             <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource next_regular}" />
                         </Button>
@@ -177,12 +188,7 @@
                            Foreground="{DynamicResource LyricSecondary}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center">
-                    <controls:AlignedTextBlock.Effect>
-                        <DropShadowEffect BlurRadius="0"
-                                          Color="Black"
-                                          OffsetX="2"
-                                          OffsetY="2" />
-                    </controls:AlignedTextBlock.Effect>
+
                 </controls:AlignedTextBlock>
             </StackPanel>
             <Grid x:Name="ReadingLayout" IsVisible="False" Margin="20,48,20,22"
@@ -198,7 +204,7 @@
                     </Border>
                     <StackPanel x:Name="SongMetadata" Spacing="10">
                         <Grid x:Name="SongTitleRow" ColumnDefinitions="Auto,*">
-                            <Image x:Name="MetadataLogo" Source="/Assets/logo.png" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <Image x:Name="MetadataLogo" Source="/Assets/AppIcon.iconset/icon_32x32@2x.png" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality" />
                             <controls:AlignedTextBlock Grid.Column="1" Text="{Binding Title}" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource LyricPrimary}"
                                        TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                         </Grid>
@@ -216,34 +222,34 @@
                                 AutomationProperties.Name="{Binding FavoriteLabel}">
                             <Grid>
                                 <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricPrimary}" Data="{StaticResource heart_outline}" IsVisible="{Binding !IsFavorite}" />
-                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource AccentBrush}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
+                                <PathIcon Height="16" Width="16" Foreground="{DynamicResource LyricAccent}" Data="{StaticResource heart_filled}" IsVisible="{Binding IsFavorite}" />
                             </Grid>
                         </Button>
 
                         <!-- Prev Button -->
-                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                        <Button Click="PrevButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Previous}">
                             <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding !Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                            <Grid>
                             <PathIcon
                                 Height="18"
                                 Width="18"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource play_regular}" />
-                        </Button>
-                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsVisible="{Binding Playing}" AutomationProperties.Name="{DynamicResource PlayPause}">
+                                Data="{StaticResource play_regular}" IsVisible="{Binding !Playing}" />
                             <PathIcon
                                 Height="18"
                                 Width="18"
                                 Foreground="{DynamicResource LyricPrimary}"
-                                Data="{StaticResource pause_regular}" />
+                                Data="{StaticResource pause_regular}" IsVisible="{Binding Playing}" />
+                            </Grid>
                         </Button>
 
                         <!-- Next Button -->
-                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                        <Button Click="NextButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Next}">
                             <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource next_regular}" />
                         </Button>
@@ -252,11 +258,11 @@
                 </controls:SongInfoPanel>
                 <controls:CenteredLyricsPanel x:Name="ContextPanel" Grid.Column="2" ClipToBounds="True">
                     <StackPanel Spacing="22" VerticalAlignment="Top" IsHitTestVisible="False">
-                        <StackPanel Spacing="5" Opacity="0.25">
+                        <StackPanel x:Name="EarlierGroup" Spacing="5" Opacity="0.25">
                             <controls:AlignedTextBlock x:Name="EarlierContext" Text="{Binding EarlierLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="EarlierTranslation" Text="{Binding EarlierLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
-                        <StackPanel Spacing="5" Opacity="0.48">
+                        <StackPanel x:Name="PreviousGroup" Spacing="5" Opacity="0.48">
                             <controls:AlignedTextBlock x:Name="PreviousContext" Text="{Binding PreviousLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="PreviousTranslation" Text="{Binding PreviousLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
@@ -269,11 +275,11 @@
                                    TextWrapping="Wrap" MaxLines="3" Opacity="0.85" />
                     </StackPanel>
                     <StackPanel Spacing="22" IsHitTestVisible="False">
-                        <StackPanel Spacing="5" Opacity="0.48">
+                        <StackPanel x:Name="NextGroup" Spacing="5" Opacity="0.48">
                             <controls:AlignedTextBlock x:Name="NextContext" Text="{Binding SecondaryLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="NextTranslation" Text="{Binding SecondaryLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>
-                        <StackPanel Spacing="5" Opacity="0.25">
+                        <StackPanel x:Name="LaterGroup" Spacing="5" Opacity="0.25">
                             <controls:AlignedTextBlock x:Name="LaterContext" Text="{Binding LaterLine.Text}" TextWrapping="Wrap" MaxLines="2" />
                             <controls:AlignedTextBlock x:Name="LaterTranslation" Text="{Binding LaterLine.Translation}" IsVisible="{Binding ShowTranslations}" TextWrapping="Wrap" MaxLines="1" />
                         </StackPanel>

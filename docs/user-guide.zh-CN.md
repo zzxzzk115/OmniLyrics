@@ -9,14 +9,43 @@
 | 平台 | 连接方式 | 播放器 |
 | --- | --- | --- |
 | Windows | 系统媒体控制 SMTC | Spotify 等接入系统媒体会话的播放器 |
-| macOS | `media-control` | Apple Music、Spotify、Cider 等提供 Now Playing 信息的播放器 |
+| macOS | 原生 Apple Events | Apple Music 和 Spotify 桌面端 |
+| macOS | 可选 `media-control` | 其他提供 Now Playing 信息的播放器 |
 | Linux | MPRIS | Spotify 和其他 MPRIS 播放器 |
 | 三个平台 | 播放器专用 API | Cider V3+、YesPlayMusic |
 
-macOS 需先运行 `brew install media-control` 安装依赖。
-播放控制、队列与收藏取决于播放器提供的能力。支持收藏时才会显示收藏按钮，目前收藏适配使用 Cider V4 的资料库 API。
+macOS 上 Apple Music 和 Spotify 通过系统自带的 `/usr/bin/osascript`（JavaScript for Automation）发送公开 Apple Events，无需额外安装。只读取已运行的播放器，不会自动启动播放器。首次使用时，请允许启动 OmniLyrics 的应用（例如终端）控制播放器。若拒绝过授权，请在「系统设置 → 隐私与安全性 → 自动化」中启用相应播放器，然后重启 OmniLyrics。当原生访问失败且没有其他可用连接时，歌词窗口会显示处理提示。
+
+macOS 的「设置 → macOS 环境」可检查原生访问、Homebrew 和 media-control 兼容性。每次启动 CLI/GUI 都会重新检查；两种连接均不可用时，交互界面会询问是否安装兜底工具，选择「暂不安装」不会阻止下次启动再次提示。line/JSON 模式及输入输出重定向时仅向标准错误输出恢复指引，不等待输入。只有用户确认后才执行安装，并显示 Homebrew 输出；支持取消并显示失败原因。没有 Homebrew 时提供官网安装入口。等待自动化授权不视为连接失败。显式设置 `OMNILYRICS_MEDIA_CONTROL=off` 时不会提示安装，因为安装不能启用已被关闭的后端。
+
+Apple Events 并非新 macOS 才支持；这里使用的 JXA 桥接从 [OS X 10.10](https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/) 起就已提供。当前 .NET 10 应用要求 [macOS 14 或更新版本](https://github.com/dotnet/core/blob/main/release-notes/10.0/supported-os.md)，安装 media-control 不能让不受支持的旧系统变为受支持。
+
+macOS 启用毛玻璃时，歌词背景层会自动使用 0% 不透明度，避免遮住 Avalonia 原有的原生模糊材质。文字提供局部描边/阴影保护，控件使用局部底色，工具栏其余区域保持透明；对比度过低的文字颜色会在显示时自动校正，但不改变已保存的配色。关闭毛玻璃后可重新调整背景不透明度。Apple Events 进度采用连续插值，小幅采样误差逐渐校正，避免逐字高亮突然前跳。
+
+Cider 继续使用 Web API。其他播放器可选运行 `brew install media-control` 安装兜底工具，程序会检查 PATH 和标准 Homebrew 位置。设置 `OMNILYRICS_MEDIA_CONTROL=off` 可关闭兜底，或将该变量设为工具的绝对路径。Apple Music / Spotify 原生连接及 Cider Web API 优先于同一播放器的系统媒体连接；可选连接缺失或失败不会阻止其他播放器运行。
+
+原生 Apple Music / Spotify 支持曲目信息、进度、播放／暂停、上一首／下一首与跳转，尚未接入原生队列。
+
+## 收藏与账号授权
+
+| 播放器 | 收藏接入 | 设置方式 |
+| --- | --- | --- |
+| macOS Apple Music | 原生 Apple Events | 允许自动化控制“音乐”，无需另行登录 |
+| Spotify 桌面端 | Spotify Web API | 设置 → 播放器连接 → Spotify：填写开发者应用 Client ID，并在浏览器授权 |
+| YesPlayMusic 桌面端 | 内置网易云本地 API | 优先直接使用本地 API；接口要求登录时，可用网易云音乐手机 App 扫码授权相同账号 |
+| Cider | V4 资料库 API | 开启 API 令牌认证时，需授予 library 权限 |
+
+仅在歌曲匹配且能读取收藏状态时显示按钮。支持固定歌曲 ID 的接口会按 ID 写入，切歌后拒绝旧状态，并回读确认结果。接口不可用或拒绝请求时，不会显示收藏成功。共享 `/favorites` 接口使用同一套适配。
+
+Spotify 使用 [PKCE 授权流程](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow)，无需 Client Secret。在开发者后台登记 **`http://127.0.0.1/spotify/callback`**（不填端口）；每次授权选择临时本地端口，符合 Spotify 的[回调地址规则](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri)。仅请求 `user-library-read`、`user-library-modify`、`user-read-currently-playing` 权限。开发模式仍受账号条件限制，详见[当前开发者要求](https://developer.spotify.com/documentation/web-api/concepts/quota-modes)。授权账号的当前歌曲必须与桌面播放器匹配。收藏使用现行 `/me/library` 接口，不依赖桌面脚本提供资料库控制。
+
+YesPlayMusic 优先直接使用本地 Web API 的可用登录态，不要求手填 Token 或预先保存 Cookie。需要本地接口 27232、10754 端口可用，可先在设置中“检测本地 API”。官方服务仅转发 API 请求，不会自动带上播放器浏览器窗口的 Cookie；如果接口返回未登录，扫码可为 OmniLyrics 单独授权。取消授权或关闭设置会停止登录。“移除已保存的授权”仅清除 OmniLyrics 保存的凭据，不会退出播放器账号。Spotify 刷新令牌与网易云登录 Cookie 保存在配置目录中的独立私密文件，macOS/Linux 仅允许当前用户读写，不包含在导出的设置中；请勿分享凭据文件。
 
 ## 五种界面预设
+
+在**设置 → 常规 → 界面缩放**中，默认跟随当前显示器。可选择 100–200%，或自定义 75–300% 的比例，立即覆盖所有窗口的缩放。这不会改变已保存的歌词字号。配置文件中的 `appearance.uiScale` 为 `null` 时跟随系统，为 `1.5` 等数值时表示 150% 等手动比例。
+
+原生托盘菜单提供缩放、布局、深浅主题、毛玻璃、翻译和字号快捷设置。若大比例导致设置窗口超出屏幕，选择“恢复 100% 缩放并找回设置窗口”，即可重置缩放并把完整设置窗口移回显示器。托盘菜单不受 OmniLyrics 界面缩放影响。
 
 在「设置 → 外观」中选择布局，然后点击「应用」。
 
@@ -147,27 +176,36 @@ GUI、TUI 和 CLI（含 JSON 组件）会复用已有 OmniLyrics 服务。
 没有服务时，本机实例按 **GUI → TUI → CLI** 优先级接管；健康服务不会因打开其他界面而被打断，退出后由剩余实例接管。
 这一协调适用于使用相同配置目录与端口的实例。其他程序占用端口时，OmniLyrics 会等待重试。
 
-默认只监听本机：HTTP `127.0.0.1:27270`，UDP 端口 `32651`。
-允许可信局域网中的其他设备连接：
+本机 HTTP（`127.0.0.1:27270`）和 UDP 控制（`32651`）在同一台电脑的应用之间无需认证。这两个接口仅限回环地址，并拒绝来自浏览器页面的 API 请求。其他局域网设备必须通过 HTTPS 配对。
+
+在来源设备的 **设置 → 局域网设备** 中启用共享并保存。选择本机局域网地址，生成邀请并私下传给接收设备，在其 **配对设备** 中粘贴邀请。选择已配对设备后，点击 **显示此设备的歌词**。共享默认关闭；配对默认只有歌词读取权限，只有生成邀请时勾选 **同时允许控制播放和收藏** 才会授权这些操作。
+
+邀请五分钟有效，仅可使用一次。其中包含来源设备的证书指纹，发送凭据前会先验证；发现设备不代表信任。**取消邀请** 会使未使用的邀请失效。在来源设备上 **撤销授权** 会立即阻止该设备后续请求；**忘记远端设备** 仅删除接收设备保存的连接。
+
+歌词来源设置适用于使用同一配置目录的 GUI、TUI 和 CLI，也适用于 CLI 的 `--control` 命令。本机服务接管独立运行，始终只发布本机播放内容，避免循环转发。来源离线或授权被撤销时会清空歌词，不会悄悄将播放控制切到本机。点击 **使用本机播放器** 可以切回。
+
+CLI 和交互式终端配置使用相同设置：
 
 ```bash
-OmniLyrics.Cli config server lan        # 监听所有 IPv4 网卡
-# 修改监听设置后，重启正在运行的服务。
-OmniLyrics.Cli --mode line
-# 在另一台设备上，填写服务所在电脑的实际局域网地址：
-OmniLyrics.Cli config server target 192.168.1.50
-# 恢复仅本机设置：
-OmniLyrics.Cli config server local
-OmniLyrics.Cli config server target 127.0.0.1
+OmniLyrics.Cli config lan                        # 交互式配置
+OmniLyrics.Cli config lan on                     # 在来源设备开启共享
+OmniLyrics.Cli config lan invite 192.168.1.50     # 私密、只读邀请
+# 只有希望允许控制播放与收藏时，才在 invite 命令后加 --control。
+OmniLyrics.Cli config lan discover               # 发现本地网络中的来源设备
+OmniLyrics.Cli config lan pair                   # 在隐藏输入中粘贴邀请
+# 管道输入使用 config lan pair --stdin，不要把邀请放到命令参数中。
+OmniLyrics.Cli config lan peers                  # 显示 ID 和权限，不输出凭据
+OmniLyrics.Cli config lan source DEVICE_ID
+OmniLyrics.Cli config lan source local
+OmniLyrics.Cli config lan revoke ACCESS_ID        # 在来源设备执行
+OmniLyrics.Cli config lan off
 ```
 
-`config server listen ADDRESS` 可指定网卡地址，`config server ports HTTP_PORT UDP_PORT` 可修改端口。
-指定远程主机后，只连接该主机；它离线时等待重连，不会在本机另开服务。
+来源设备需要保持新版 GUI、TUI 或 CLI 运行。HTTPS 使用 TCP **27271**，发现使用 UDP **32652**；防火墙只需在私有网络放行这些端口。发现采用 IPv4 广播，访客 Wi-Fi 或 VLAN 可能阻止广播，此时仍可通过邀请直接连接。直接配对支持私有 IPv4、IPv6 地址，不支持互联网地址。`config lan ports HTTPS_PORT UDP_PORT` 修改局域网端口，`config lan name NAME` 设置设备名称。发现设备要求双方使用相同发现端口。重新发现 IP 变化的设备时，仍会保持原来的证书验证。
 
-单次运行可使用 `--listen`、`--host`、`--http-port`、`--udp-port` 覆盖设置。
-对应环境变量为 `OMNILYRICS_LISTEN_ADDRESS`、`OMNILYRICS_CONTROL_HOST`、`OMNILYRICS_HTTP_PORT`、
-`OMNILYRICS_UDP_PORT`，命令行参数优先。
-这些 HTTP／UDP 接口没有认证，只适用于可信网络；Cider 令牌不保护 OmniLyrics 自身的服务。
+配对凭据和设备证书独立保存在私有配置目录的 `lan-trust.json` 中，不要公开或复制到其他设备。发现与配对不包含 Cider、Spotify 或网易云凭据。包括自定义客户端在内，局域网 API 请求均须通过 HTTPS，验证已配对证书并携带 bearer token。只读授权不能读取或修改收藏，不会降级为明文或跳过证书验证。
+
+`config server lan` 现在等同于启用安全共享。旧的 HTTP/UDP 全网卡监听会被限制为回环地址，请把远端 `server target` 配置迁移为配对。`config server listen ADDRESS` 和 `config server target HOST` 仅接受回环地址。`config server ports HTTP_PORT UDP_PORT` 以及已有 `--listen`、`--host`、`--http-port`、`--udp-port` / `OMNILYRICS_*` 覆盖项只配置本机通信。
 
 ## Web API
 

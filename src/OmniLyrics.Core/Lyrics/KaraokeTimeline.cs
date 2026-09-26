@@ -50,20 +50,41 @@ public sealed class PlaybackClock(TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     private string? _track;
-    private TimeSpan _position;
+    private TimeSpan _reported, _anchor;
     private bool _playing;
     private long _timestamp;
+    private double _rate = 1;
 
     public void Update(string track, TimeSpan position, bool playing)
     {
-        if (_track == track && _position == position && _playing == playing) return;
+        position = position < TimeSpan.Zero ? TimeSpan.Zero : position;
+        if (_track == track && _reported == position && _playing == playing) return;
+        var now = _time.GetTimestamp();
+        var current = Position;
+        var changed = position != _reported;
+        var seek = changed && (position < _reported - TimeSpan.FromMilliseconds(250)
+            || Math.Abs((position - current).TotalSeconds) > 2);
+        if (_track != track || _playing != playing || !playing || seek)
+        {
+            _anchor = position;
+            _rate = 1;
+        }
+        else
+        {
+            // Coarse reports (e.g. YesPlayMusic's one-second updates) must not
+            // rewind the highlight. Correct normal polling jitter gradually.
+            _anchor = current;
+            _rate = 1 + Math.Clamp((position - current).TotalSeconds / 8, -.05, .05);
+        }
         _track = track;
-        _position = position < TimeSpan.Zero ? TimeSpan.Zero : position;
+        _reported = position;
         _playing = playing;
-        _timestamp = _time.GetTimestamp();
+        _timestamp = now;
     }
 
-    public TimeSpan Position => _position + (_playing
-        ? TimeSpan.FromMilliseconds(Math.Clamp(_time.GetElapsedTime(_timestamp).TotalMilliseconds, 0, 500))
+    public TimeSpan Position => _anchor + (_playing
+        // Allow one-second players to interpolate through delayed polls, but
+        // stop if the player no longer advances its reported position.
+        ? TimeSpan.FromSeconds(Math.Clamp(_time.GetElapsedTime(_timestamp).TotalSeconds, 0, 2) * _rate)
         : TimeSpan.Zero);
 }

@@ -21,6 +21,23 @@ async Task Until(Func<bool> predicate)
     for (var i = 0; i < 100; i++) { if (predicate()) return; await Task.Delay(50); }
     throw new Exception("Condition timed out");
 }
+foreach (object value in new object[] { 210026000L, 210026000UL, 210026000, 210026000U })
+{
+    var metadata = OmniLyrics.Backends.Linux.PlayerMetadata.FromDictionary(new Dictionary<string, object>
+        { ["mpris:length"] = value, ["xesam:title"] = "Spotify sample" });
+    Check($"MPRIS duration accepts {value.GetType().Name}", metadata.Length == TimeSpan.FromMilliseconds(210026));
+}
+foreach (object value in new object[] { -1L, -1, ulong.MaxValue, long.MaxValue, "210026000" })
+{
+    var metadata = OmniLyrics.Backends.Linux.PlayerMetadata.FromDictionary(new Dictionary<string, object>
+        { ["mpris:length"] = value, ["xesam:title"] = "Spotify sample" });
+    Check($"Invalid MPRIS duration preserves track metadata: {value.GetType().Name} {value}",
+        metadata.Length == null && metadata.Title == "Spotify sample");
+}
+Check("Missing duration does not downgrade artist and album metadata", MediaTypeDetector.Guess(new()
+    { Title = "Spotify sample", Artists = ["Artist"], Album = "Album" }) == MediaType.Music);
+Check("A known short clip still keeps its duration evidence", MediaTypeDetector.Guess(new()
+    { Title = "Short clip", Duration = TimeSpan.FromSeconds(1) }) == MediaType.Video);
 foreach (var ip in new[] { IPAddress.Loopback, IPAddress.IPv6Loopback })
 {
     using var receiver = new UdpClient(new IPEndPoint(ip, 0));

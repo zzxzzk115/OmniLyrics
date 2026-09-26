@@ -25,6 +25,7 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
     private readonly DispatcherTimer _timer;
     private static readonly LyricsLine Empty = new(TimeSpan.Zero, "", null);
     private LyricsLine _defaultLine = Empty;
+    private LyricsLine _noSongLine = new(TimeSpan.Zero, Localization.Get("NoSongPlaying"), null);
     private IReadOnlyList<LyricsLine>? _shownLyrics;
     private string? _requestedTrack;
     private bool _disposed;
@@ -58,6 +59,7 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
     public LyricsViewModel(DesktopSession backend, LyricsManager lyrics)
     {
         _backend = backend; _lyrics = lyrics;
+        CurrentLine = _noSongLine;
         _ = _backend.StartAsync(_cts.Token);
         _prefetch = new LyricsPrefetcher(_backend, _lyrics, _cts.Token, () => !ReferenceEquals(_lyrics, _backend.Lyrics) && _backend.RemoteSnapshot == null);
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => Refresh());
@@ -80,7 +82,8 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
     public bool Approximate => AppearancePreferences.Current.ApproximateHighlight;
     public string TimingLabel => _shownLyrics?.Count > 0 ? Localization.Get(CurrentLine.Tokens?.Exists(t => t.Duration > TimeSpan.Zero) == true
         ? "WordTiming" : Approximate && LineEnd > CurrentLine.Timestamp ? "ApproximateTiming" : "LineTiming") : "";
-    public bool FavoriteAvailable => _favorite != null;
+    public bool CanControl => _backend.CanControl;
+    public bool FavoriteAvailable => _favorite != null && CanControl;
     public bool IsFavorite => _favorite?.IsFavorite == true;
     public bool FavoriteBusy { get => _favoriteBusy; private set { if (Set(ref _favoriteBusy, value)) { Raise(nameof(FavoriteEnabled)); Raise(nameof(FavoriteLabel)); } } }
     public bool FavoriteEnabled => FavoriteAvailable && !FavoriteBusy;
@@ -110,13 +113,15 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
         Localization.Refresh();
         var remote = _backend.RemoteSnapshot;
         var state = remote != null ? remote.State : _backend.GetCurrentState();
+        if (state != null && (string.IsNullOrWhiteSpace(state.Title) || MediaTypeDetector.Guess(state) is MediaType.Video or MediaType.Podcast)) state = null;
         _state = state?.DeepCopy();
+        Raise(nameof(CanControl));
         RefreshFavorite(state);
         // Keep frame-rate interpolation only while music is advancing.
         _timer.Interval = TimeSpan.FromMilliseconds(state?.Playing == true ? 16 : 100);
-        ConnectionLabel = PlayerDisplayName.For(state);
+        ConnectionLabel = _backend.RemoteDeviceName is { } device ? $"{device} · {PlayerDisplayName.For(state)}" : PlayerDisplayName.For(state);
         ConnectionDetails = _backend.LastControlError ?? _backend.ServiceError ?? (remote != null ? Localization.Get("SharedPlayback") : Localization.Format("DirectPlayback", ConnectionLabel));
-        if (state == null || MediaTypeDetector.Guess(state) != MediaType.Music)
+        if (state == null)
         {
             _hasTrack = false;
             _requestedTrack = null;
@@ -124,8 +129,12 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
             Title = null; Artist = ""; Album = null; ArtworkUrl = null;
             Position = Duration = TimeSpan.Zero; Playing = false;
             SetLyrics(null);
-            CurrentLine = SecondaryLine = PreviousLine = EarlierLine = LaterLine = Empty;
+            var message = _backend.ServiceError ?? Localization.Get("NoSongPlaying");
+            if (_noSongLine.Text != message) _noSongLine = new(TimeSpan.Zero, message, null);
+            CurrentLine = _noSongLine;
+            SecondaryLine = PreviousLine = EarlierLine = LaterLine = Empty;
             Translation = null; LineEnd = TimeSpan.Zero;
+            Raise(nameof(Progress)); Raise(nameof(ElapsedText)); Raise(nameof(DurationText));
             return;
         }
 

@@ -59,7 +59,44 @@ Check("Forward seek snaps to player position", clock.Position == Ms(9000));
 clock.Update("b", Ms(0), true);
 Check("Track changes reset the clock", clock.Position == TimeSpan.Zero);
 time.Advance(10000);
-Check("Missing player updates cannot run lyrics far ahead", clock.Position == Ms(500));
+Check("Missing player updates cannot run lyrics far ahead", clock.Position == Ms(2000));
+
+// YesPlayMusic reports a new position about once a second. Polling that value
+// faster must not produce a half-second stall or rewind on each report.
+time = new ManualTime(); clock = new PlaybackClock(time);
+clock.Update("coarse", Ms(0), true);
+var previous = clock.Position;
+var smooth = true;
+for (var frame = 1; frame <= 750; frame++)
+{
+    time.Advance(16);
+    // Model 100 ms client polls, with a one-second player sample and jitter.
+    if (frame % 7 == 0)
+    {
+        var reported = Math.Floor(frame * 16 / 1000d) * 1000;
+        clock.Update("coarse", Ms(reported), true);
+    }
+    var step = (clock.Position - previous).TotalMilliseconds;
+    smooth &= step >= 15 && step <= 17;
+    previous = clock.Position;
+}
+Check("One-second player reports advance smoothly on every rendered frame", smooth);
+Check("Polling jitter stays close to the playback timeline", Math.Abs(clock.Position.TotalMilliseconds - 12000) < 150);
+var beforeCorrection = clock.Position;
+var correction = clock.Position - Ms(100);
+clock.Update("coarse", correction, true);
+Check("Small timing corrections never jump the highlight backward", clock.Position == beforeCorrection);
+time.Advance(16);
+Check("Gradual correction keeps the highlight moving", clock.Position > beforeCorrection);
+time.Advance(5000);
+var stalled = clock.Position;
+clock.Update("coarse", correction, true);
+time.Advance(5000);
+Check("Repeated stale polls cannot renew the interpolation budget", clock.Position == stalled);
+clock.Update("coarse", Ms(1000), true);
+Check("A backward seek still resets a stalled timeline", clock.Position == Ms(1000));
+clock.Update("coarse", Ms(50000), true);
+Check("A forward seek still resets a stalled timeline", clock.Position == Ms(50000));
 
 // Use the production Avalonia renderer. No real player or library is accessed.
 AppBuilder.Configure<Application>().UsePlatformDetect().WithInterFont().SetupWithoutStarting();

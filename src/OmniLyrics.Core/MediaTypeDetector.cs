@@ -27,15 +27,16 @@ public static class MediaTypeDetector
         if (!string.IsNullOrWhiteSpace(state.Album))
             score += 2;
 
-        // 3) Duration: very strong classifier
+        // 3) Only a known positive duration can classify short clips.
+        // Zero is used for missing metadata, not a zero-length sound.
         var dur = state.Duration;
 
-        if (dur.TotalSeconds <= 1)
+        if (dur > TimeSpan.Zero && dur.TotalSeconds <= 1)
         {
             // extremely short → UI sound
             score -= 3;
         }
-        else if (dur.TotalSeconds <= 30)
+        else if (dur > TimeSpan.Zero && dur.TotalSeconds <= 30)
         {
             // typical advertisement
             score -= 3;

@@ -59,7 +59,7 @@ public abstract class BaseLyricsCli : ILyricsProvider
     protected bool RenderEmptyFrame(PlayerState? state, (List<LyricsLine>? Lines, bool Loading, long Revision) snapshot, bool singleLine = false)
     {
         if (snapshot.Lines is { Count: > 0 }) { _emptyFrame = null; return false; }
-        var title = state == null ? Localization.Get("Waiting") : $"{string.Join(", ", state.Artists)} - {state.Title}";
+        var title = state == null ? (Backend as SharedPlayerSession)?.ServiceError ?? Localization.Get("Waiting") : $"{string.Join(", ", state.Artists)} - {state.Title}";
         var message = state == null ? "" : Localization.Get(snapshot.Loading ? "SearchingLyrics" : "NoLyrics");
         var key = title + "|" + message;
         if (_emptyFrame == key) return true;
