@@ -181,6 +181,11 @@ jobs:
         run: |
           dotnet run --project tests/FavoritesSmoke -c Release
           node tests/apple-events-favorites.test.cjs
+      - name: Verify LAN pairing and local service compatibility
+        run: |
+          dotnet run --project tests/LanSmoke -c Release
+          dotnet run --project tests/ServiceSmoke -c Release
+          dotnet run --project tests/ElectionSmoke -c Release
       - name: Check compositor command isolation
         run: dotnet run --project tests/BackdropSmoke -c Release
       - name: Exercise native UI on a private display

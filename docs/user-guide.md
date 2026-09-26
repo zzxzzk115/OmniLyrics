@@ -186,28 +186,36 @@ A healthy service keeps running when another frontend opens; if it exits, a rema
 This coordination applies to instances using the same configuration directory and port pair.
 If another application occupies the ports, OmniLyrics waits and retries.
 
-The default is local-only: HTTP `127.0.0.1:27270`, UDP port `32651`.
-To let other devices on a trusted LAN connect:
+Local HTTP (`127.0.0.1:27270`) and UDP control (`32651`) need no authentication between apps on the same computer. These listeners are restricted to loopback; browser-origin API calls are rejected. Other LAN devices must pair over HTTPS.
+
+In **Settings → LAN devices**, enable sharing on the source device and save. Generate an invitation using its LAN address, transfer it privately to the receiving device, then paste it in **Pair device**. Select the paired device and choose **Show this device’s lyrics**. Sharing is off by default; pairing grants read-only lyrics access unless **Also allow playback and favorites control** was checked when creating the invitation.
+
+Invitations expire after five minutes and can be used once. They include the source certificate fingerprint, which is checked before credentials are sent; discovering a device does not make it trusted. **Cancel invitation** invalidates an unused invitation. **Revoke access** on the source immediately blocks subsequent requests from that device. **Forget remote device** only removes the receiving device’s saved connection.
+
+The selected source applies to GUI, TUI and CLI using the same configuration directory, including CLI `--control` commands. Local service ownership still works independently and always exports local playback, avoiding relay loops. An offline or revoked source clears its lyrics; it does not silently switch playback controls to the local player. Choose **Use this device’s player** to switch back.
+
+CLI and interactive terminal configuration use the same settings:
 
 ```bash
-OmniLyrics.Cli config server lan        # Listen on all IPv4 interfaces
-# Restart the running service after changing its listening settings.
-OmniLyrics.Cli --mode line
-# On another device, set the server's actual LAN address:
-OmniLyrics.Cli config server target 192.168.1.50
-# Restore local-only settings:
-OmniLyrics.Cli config server local
-OmniLyrics.Cli config server target 127.0.0.1
+OmniLyrics.Cli config lan                        # Interactive setup
+OmniLyrics.Cli config lan on                     # Enable sharing on the source
+OmniLyrics.Cli config lan invite 192.168.1.50     # Private, read-only invitation
+# Add --control to the invite command only to allow playback/favorites control.
+OmniLyrics.Cli config lan discover               # Find sources on the local network
+OmniLyrics.Cli config lan pair                   # Paste invitation into hidden input
+# Use config lan pair --stdin to read one invitation from a pipe, not an argument.
+OmniLyrics.Cli config lan peers                  # IDs and permissions, never credentials
+OmniLyrics.Cli config lan source DEVICE_ID
+OmniLyrics.Cli config lan source local
+OmniLyrics.Cli config lan revoke ACCESS_ID        # Run on the source
+OmniLyrics.Cli config lan off
 ```
 
-Use `config server listen ADDRESS` for a specific interface and `config server ports HTTP_PORT UDP_PORT`
-for custom ports. A remote target is followed only; if it is offline, the client waits to reconnect.
+Keep a current GUI, TUI or CLI running on the source. HTTPS uses TCP **27271**; discovery uses UDP **32652**. Allow these ports only on private networks in your firewall. Discovery uses IPv4 broadcast and may be blocked by guest Wi-Fi or VLANs; an invitation can connect directly without broadcast. Private IPv4 and IPv6 addresses are supported for direct pairing; Internet endpoints are not. `config lan ports HTTPS_PORT UDP_PORT` changes the LAN ports, and `config lan name NAME` sets the device name. Devices must use the same discovery port to find each other. Certificate pinning is retained when rediscovery finds a new IP address.
 
-For one run, `--listen`, `--host`, `--http-port` and `--udp-port` override the saved settings.
-The corresponding environment variables are `OMNILYRICS_LISTEN_ADDRESS`, `OMNILYRICS_CONTROL_HOST`,
-`OMNILYRICS_HTTP_PORT` and `OMNILYRICS_UDP_PORT`; command-line options take precedence.
-These HTTP/UDP interfaces have no authentication and are intended for trusted networks.
-A Cider token does not protect OmniLyrics' own service.
+Pairing credentials and the device certificate are stored separately in `lan-trust.json` in the private configuration directory. Do not publish or copy that file to other devices. Cider/Spotify/NetEase credentials are never part of discovery or pairing. LAN API requests require the paired bearer token over HTTPS with the pinned certificate, including when using custom clients. Read-only grants cannot read or change favorites. There is no plaintext or certificate-verification bypass fallback.
+
+`config server lan` is now an alias for enabling secure sharing. Old wildcard HTTP/UDP listeners are restricted to loopback; migrate remote `server target` settings to pairing. `config server listen ADDRESS` and `config server target HOST` accept loopback addresses only. `config server ports HTTP_PORT UDP_PORT` and the existing `--listen`, `--host`, `--http-port`, `--udp-port` / `OMNILYRICS_*` overrides configure local IPC only.
 
 ## Web API Endpoints
 

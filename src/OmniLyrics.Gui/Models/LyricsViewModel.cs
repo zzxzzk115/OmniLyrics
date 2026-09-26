@@ -82,7 +82,8 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
     public bool Approximate => AppearancePreferences.Current.ApproximateHighlight;
     public string TimingLabel => _shownLyrics?.Count > 0 ? Localization.Get(CurrentLine.Tokens?.Exists(t => t.Duration > TimeSpan.Zero) == true
         ? "WordTiming" : Approximate && LineEnd > CurrentLine.Timestamp ? "ApproximateTiming" : "LineTiming") : "";
-    public bool FavoriteAvailable => _favorite != null;
+    public bool CanControl => _backend.CanControl;
+    public bool FavoriteAvailable => _favorite != null && CanControl;
     public bool IsFavorite => _favorite?.IsFavorite == true;
     public bool FavoriteBusy { get => _favoriteBusy; private set { if (Set(ref _favoriteBusy, value)) { Raise(nameof(FavoriteEnabled)); Raise(nameof(FavoriteLabel)); } } }
     public bool FavoriteEnabled => FavoriteAvailable && !FavoriteBusy;
@@ -114,10 +115,11 @@ public class LyricsViewModel : INotifyPropertyChanged, IDisposable
         var state = remote != null ? remote.State : _backend.GetCurrentState();
         if (state != null && (string.IsNullOrWhiteSpace(state.Title) || MediaTypeDetector.Guess(state) is MediaType.Video or MediaType.Podcast)) state = null;
         _state = state?.DeepCopy();
+        Raise(nameof(CanControl));
         RefreshFavorite(state);
         // Keep frame-rate interpolation only while music is advancing.
         _timer.Interval = TimeSpan.FromMilliseconds(state?.Playing == true ? 16 : 100);
-        ConnectionLabel = PlayerDisplayName.For(state);
+        ConnectionLabel = _backend.RemoteDeviceName is { } device ? $"{device} · {PlayerDisplayName.For(state)}" : PlayerDisplayName.For(state);
         ConnectionDetails = _backend.LastControlError ?? _backend.ServiceError ?? (remote != null ? Localization.Get("SharedPlayback") : Localization.Format("DirectPlayback", ConnectionLabel));
         if (state == null)
         {

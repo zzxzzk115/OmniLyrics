@@ -113,7 +113,7 @@ dotnet run --project src/OmniLyrics.Cli -- --control seek 10
 ## Web API Endpoints
 
 Default and line modes provide an HTTP service at `http://127.0.0.1:27270`.
-GUI, TUI and CLI reuse an existing service; when it stops, remaining local instances take over in GUI → TUI → CLI order. For snapshots, favorites and trusted-LAN configuration, see the [protocol guide](./docs/user-guide.md#web-api-endpoints).
+GUI, TUI and CLI reuse an existing service; when it stops, remaining local instances take over in GUI → TUI → CLI order. For snapshots, favorites and secure LAN discovery and pairing, see the [protocol guide](./docs/user-guide.md#web-api-endpoints).
 
 ### Lyrics API
 

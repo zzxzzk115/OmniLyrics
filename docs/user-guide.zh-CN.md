@@ -176,27 +176,36 @@ GUI、TUI 和 CLI（含 JSON 组件）会复用已有 OmniLyrics 服务。
 没有服务时，本机实例按 **GUI → TUI → CLI** 优先级接管；健康服务不会因打开其他界面而被打断，退出后由剩余实例接管。
 这一协调适用于使用相同配置目录与端口的实例。其他程序占用端口时，OmniLyrics 会等待重试。
 
-默认只监听本机：HTTP `127.0.0.1:27270`，UDP 端口 `32651`。
-允许可信局域网中的其他设备连接：
+本机 HTTP（`127.0.0.1:27270`）和 UDP 控制（`32651`）在同一台电脑的应用之间无需认证。这两个接口仅限回环地址，并拒绝来自浏览器页面的 API 请求。其他局域网设备必须通过 HTTPS 配对。
+
+在来源设备的 **设置 → 局域网设备** 中启用共享并保存。选择本机局域网地址，生成邀请并私下传给接收设备，在其 **配对设备** 中粘贴邀请。选择已配对设备后，点击 **显示此设备的歌词**。共享默认关闭；配对默认只有歌词读取权限，只有生成邀请时勾选 **同时允许控制播放和收藏** 才会授权这些操作。
+
+邀请五分钟有效，仅可使用一次。其中包含来源设备的证书指纹，发送凭据前会先验证；发现设备不代表信任。**取消邀请** 会使未使用的邀请失效。在来源设备上 **撤销授权** 会立即阻止该设备后续请求；**忘记远端设备** 仅删除接收设备保存的连接。
+
+歌词来源设置适用于使用同一配置目录的 GUI、TUI 和 CLI，也适用于 CLI 的 `--control` 命令。本机服务接管独立运行，始终只发布本机播放内容，避免循环转发。来源离线或授权被撤销时会清空歌词，不会悄悄将播放控制切到本机。点击 **使用本机播放器** 可以切回。
+
+CLI 和交互式终端配置使用相同设置：
 
 ```bash
-OmniLyrics.Cli config server lan        # 监听所有 IPv4 网卡
-# 修改监听设置后，重启正在运行的服务。
-OmniLyrics.Cli --mode line
-# 在另一台设备上，填写服务所在电脑的实际局域网地址：
-OmniLyrics.Cli config server target 192.168.1.50
-# 恢复仅本机设置：
-OmniLyrics.Cli config server local
-OmniLyrics.Cli config server target 127.0.0.1
+OmniLyrics.Cli config lan                        # 交互式配置
+OmniLyrics.Cli config lan on                     # 在来源设备开启共享
+OmniLyrics.Cli config lan invite 192.168.1.50     # 私密、只读邀请
+# 只有希望允许控制播放与收藏时，才在 invite 命令后加 --control。
+OmniLyrics.Cli config lan discover               # 发现本地网络中的来源设备
+OmniLyrics.Cli config lan pair                   # 在隐藏输入中粘贴邀请
+# 管道输入使用 config lan pair --stdin，不要把邀请放到命令参数中。
+OmniLyrics.Cli config lan peers                  # 显示 ID 和权限，不输出凭据
+OmniLyrics.Cli config lan source DEVICE_ID
+OmniLyrics.Cli config lan source local
+OmniLyrics.Cli config lan revoke ACCESS_ID        # 在来源设备执行
+OmniLyrics.Cli config lan off
 ```
 
-`config server listen ADDRESS` 可指定网卡地址，`config server ports HTTP_PORT UDP_PORT` 可修改端口。
-指定远程主机后，只连接该主机；它离线时等待重连，不会在本机另开服务。
+来源设备需要保持新版 GUI、TUI 或 CLI 运行。HTTPS 使用 TCP **27271**，发现使用 UDP **32652**；防火墙只需在私有网络放行这些端口。发现采用 IPv4 广播，访客 Wi-Fi 或 VLAN 可能阻止广播，此时仍可通过邀请直接连接。直接配对支持私有 IPv4、IPv6 地址，不支持互联网地址。`config lan ports HTTPS_PORT UDP_PORT` 修改局域网端口，`config lan name NAME` 设置设备名称。发现设备要求双方使用相同发现端口。重新发现 IP 变化的设备时，仍会保持原来的证书验证。
 
-单次运行可使用 `--listen`、`--host`、`--http-port`、`--udp-port` 覆盖设置。
-对应环境变量为 `OMNILYRICS_LISTEN_ADDRESS`、`OMNILYRICS_CONTROL_HOST`、`OMNILYRICS_HTTP_PORT`、
-`OMNILYRICS_UDP_PORT`，命令行参数优先。
-这些 HTTP／UDP 接口没有认证，只适用于可信网络；Cider 令牌不保护 OmniLyrics 自身的服务。
+配对凭据和设备证书独立保存在私有配置目录的 `lan-trust.json` 中，不要公开或复制到其他设备。发现与配对不包含 Cider、Spotify 或网易云凭据。包括自定义客户端在内，局域网 API 请求均须通过 HTTPS，验证已配对证书并携带 bearer token。只读授权不能读取或修改收藏，不会降级为明文或跳过证书验证。
+
+`config server lan` 现在等同于启用安全共享。旧的 HTTP/UDP 全网卡监听会被限制为回环地址，请把远端 `server target` 配置迁移为配对。`config server listen ADDRESS` 和 `config server target HOST` 仅接受回环地址。`config server ports HTTP_PORT UDP_PORT` 以及已有 `--listen`、`--host`、`--http-port`、`--udp-port` / `OMNILYRICS_*` 覆盖项只配置本机通信。
 
 ## Web API
 

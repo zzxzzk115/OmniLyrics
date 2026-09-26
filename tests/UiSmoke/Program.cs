@@ -49,6 +49,11 @@ var config = Path.Combine(Path.GetTempPath(), "omnilyrics-ui-" + Guid.NewGuid().
 Environment.SetEnvironmentVariable("OMNILYRICS_CONFIG_DIR", config);
 Environment.SetEnvironmentVariable("OMNILYRICS_LANGUAGE", null);
 UserConfiguration.SaveLanguage("en"); UserConfiguration.SaveLyrics(new(false, 5));
+using (var reserved = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0))
+{
+    reserved.Start();
+    UserConfiguration.SaveServer(new("127.0.0.1", ((System.Net.IPEndPoint)reserved.LocalEndpoint).Port, 32651, "127.0.0.1"));
+}
 var passed = 0;
 var failures = new List<string>();
 void Check(string name, bool condition)
@@ -219,7 +224,7 @@ UserConfiguration.SaveCider("token", "ui-demo-token");
 var settings = new SettingsWindow();
 settings.Show(); Pump(250);
 var navigation = settings.FindControl<TabControl>("SettingsTabs")!;
-foreach (var name in new[] { "LyricsTab", "ThemeTab", "GeneralTab", "AboutTab", "AppearanceTab", "PlayerConnectionsTab" })
+foreach (var name in new[] { "LyricsTab", "ThemeTab", "GeneralTab", "AboutTab", "AppearanceTab", "PlayerConnectionsTab", "LanTab" })
 {
     var tab = settings.FindControl<TabItem>(name)!;
     foreach (var x in new[] { 5d, 24d, 100d, tab.Bounds.Width - 5 })
@@ -229,6 +234,12 @@ foreach (var name in new[] { "LyricsTab", "ThemeTab", "GeneralTab", "AboutTab", 
         Check($"Navigation {tab.Name} selects and focuses the clicked row at x={x}", navigation.SelectedItem == tab && tab.IsKeyboardFocusWithin);
     }
 }
+navigation.SelectedItem = settings.FindControl<TabItem>("LanTab"); Pump();
+Check("LAN sharing is opt-in in the real settings UI", settings.FindControl<CheckBox>("LanEnabled")!.IsChecked == false);
+Check("LAN playback control permission defaults off", settings.FindControl<CheckBox>("LanControlGrant")!.IsChecked != true);
+Check("Private invitations are hidden until explicitly generated", !settings.FindControl<TextBox>("LanInvitation")!.IsVisible);
+Check("LAN page title follows the navigation resource", settings.FindControl<TextBlock>("PageTitle")!.Text == Localization.Get("LanDevices"));
+Capture(settings, "settings-lan");
 var search = settings.FindControl<TextBox>("SettingsSearch")!;
 PointerClick(settings, search);
 Check("Search accepts pointer focus", search.IsKeyboardFocusWithin);
@@ -346,7 +357,7 @@ Check("Apply has a fixed height and centered content", applyButton.Height == 36
     && applyButton.HorizontalContentAlignment == Avalonia.Layout.HorizontalAlignment.Center
     && applyButton.VerticalContentAlignment == Avalonia.Layout.VerticalAlignment.Center);
 Resize(settings, 790, 580); Capture(settings, "settings-minimum");
-foreach (var name in new[] { "LyricsTab", "AboutTab", "ThemeTab", "GeneralTab", "PlayerConnectionsTab", "AppearanceTab" })
+foreach (var name in new[] { "LyricsTab", "AboutTab", "ThemeTab", "GeneralTab", "PlayerConnectionsTab", "AppearanceTab", "LanTab" })
 {
     var tab = settings.FindControl<TabItem>(name)!;
     PointerClick(settings, tab);

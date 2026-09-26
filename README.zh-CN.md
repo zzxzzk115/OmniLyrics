@@ -113,7 +113,7 @@ dotnet run --project src/OmniLyrics.Cli -- --control seek 10
 ## Web API 接口
 
 默认模式和单行模式在 `http://127.0.0.1:27270` 提供 HTTP 服务。
-GUI、TUI 和 CLI 会复用已有服务；服务停止后，其余本机实例按 GUI → TUI → CLI 的顺序接管。快照、收藏与可信局域网的配置见 [协议指南](./docs/user-guide.zh-CN.md#web-api)。
+GUI、TUI 和 CLI 会复用已有服务；服务停止后，其余本机实例按 GUI → TUI → CLI 的顺序接管。快照、收藏与安全局域网发现与配对的配置见 [协议指南](./docs/user-guide.zh-CN.md#web-api)。
 
 ### 歌词 API
 

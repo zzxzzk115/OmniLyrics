@@ -1,6 +1,7 @@
-﻿using OmniLyrics.Core;
+using OmniLyrics.Core;
 using OmniLyrics.Core.Cli;
 using OmniLyrics.Core.Configuration;
+using OmniLyrics.Core.Network;
 using System.Runtime.InteropServices;
 
 public static class LyricsCliRunner
@@ -17,10 +18,21 @@ public static class LyricsCliRunner
         };
         UserConfiguration.ValidateServer(serverSettings);
 
-        // Control mode -> send UDP command (do NOT initialize backends)
+        // Control mode does not initialize player backends. Follow an explicitly selected paired source.
         if (opt.Control != ControlAction.None)
         {
-            await ControlSender.SendAsync(opt.ToCommandString(), serverSettings.ControlHost, serverSettings.UdpPort);
+            if (UserConfiguration.LoadLan().SelectedDeviceId is { } id)
+            {
+                var peer = new LanTrustStore().Peers().FirstOrDefault(p => p.Id == id)
+                    ?? throw new InvalidOperationException(Localization.Get("LanPairFirst"));
+                var seconds = opt.SeekPositionSeconds ?? 0;
+                if (!double.IsFinite(seconds) || seconds < 0 || seconds > TimeSpan.MaxValue.TotalSeconds / 2)
+                    throw new ArgumentException("Invalid seek position.");
+                using var client = new LanClient(peer);
+                await client.ControlAsync(opt.Control.ToString().ToLowerInvariant(),
+                    opt.Control == ControlAction.Seek ? TimeSpan.FromSeconds(seconds) : null, default);
+            }
+            else await ControlSender.SendAsync(opt.ToCommandString(), serverSettings.ControlHost, serverSettings.UdpPort);
             return;
         }
 

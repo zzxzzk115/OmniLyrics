@@ -124,13 +124,13 @@
                         </Button>
 
                         <!-- Prev Button -->
-                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                        <Button Click="PrevButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Previous}">
                             <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Click="PlayPauseButton_Click" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Click="PlayPauseButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource PlayPause}">
                             <Grid>
                             <PathIcon
                                 Height="12"
@@ -146,7 +146,7 @@
                         </Button>
 
                         <!-- Next Button -->
-                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                        <Button Click="NextButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Next}">
                             <PathIcon Height="12" Width="12" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource next_regular}" />
                         </Button>
@@ -227,13 +227,13 @@
                         </Button>
 
                         <!-- Prev Button -->
-                        <Button Click="PrevButton_Click" AutomationProperties.Name="{DynamicResource Previous}">
+                        <Button Click="PrevButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Previous}">
                             <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource previous_regular}" />
                         </Button>
 
                         <!-- Play/Pause Button -->
-                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" AutomationProperties.Name="{DynamicResource PlayPause}">
+                        <Button Classes="mainPlay" Click="PlayPauseButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource PlayPause}">
                             <Grid>
                             <PathIcon
                                 Height="18"
@@ -249,7 +249,7 @@
                         </Button>
 
                         <!-- Next Button -->
-                        <Button Click="NextButton_Click" AutomationProperties.Name="{DynamicResource Next}">
+                        <Button Click="NextButton_Click" IsEnabled="{Binding CanControl}" AutomationProperties.Name="{DynamicResource Next}">
                             <PathIcon Height="18" Width="18" Foreground="{DynamicResource LyricPrimary}"
                                       Data="{StaticResource next_regular}" />
                         </Button>

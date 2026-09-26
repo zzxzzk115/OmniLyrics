@@ -142,8 +142,9 @@
             <Setter Property="MinWidth" Value="196"/>
             <Setter Property="Width" Value="196"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="13,12"/>
-            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Padding" Value="13,9"/>
+            <Setter Property="MinHeight" Value="38"/>
+            <Setter Property="Margin" Value="0,2"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <ControlTemplate>
@@ -193,6 +194,10 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+        <Style Selector="ScrollViewer.navScroll /template/ ScrollBar:vertical">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="MinWidth" Value="10"/>
+        </Style>
     </Window.Styles>
     <Grid RowDefinitions="*,Auto">
         <Border Width="232" HorizontalAlignment="Left" Background="{DynamicResource SidebarBackground}" Grid.RowSpan="2"/>
@@ -219,11 +224,17 @@
             </Border>
             <TextBlock x:Name="SearchEmpty" Grid.Row="1" IsVisible="False" Margin="240,68,0,0" Text="{DynamicResource NoSettingsFound}" Classes="hint"/>
             <TabControl x:Name="SettingsTabs" Grid.Row="1" TabStripPlacement="Left" SelectionChanged="SettingsTabs_SelectionChanged">
-                <TabControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Margin="0,64,0,0"/>
-                    </ItemsPanelTemplate>
-                </TabControl.ItemsPanel>
+                <TabControl.Template>
+                    <ControlTemplate>
+                        <Grid ColumnDefinitions="208,*">
+                            <ScrollViewer Classes="navScroll" Margin="0,64,0,0" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                            </ScrollViewer>
+                            <ContentPresenter Name="PART_SelectedContentHost" Grid.Column="1" Content="{TemplateBinding SelectedContent}" ContentTemplate="{TemplateBinding SelectedContentTemplate}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </TabControl.Template>
+                <TabControl.ItemsPanel><ItemsPanelTemplate><StackPanel/></ItemsPanelTemplate></TabControl.ItemsPanel>
                 <TabItem x:Name="GeneralTab" Tag="General Language SystemLanguage UiScale SystemScale CustomScale DPI HiDPI 缩放">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="12">
@@ -510,6 +521,76 @@
                                     <TextBlock x:Name="YesPlayMusicLoginStatus" Classes="hint"/>
                                 </StackPanel>
                             </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="LanTab" Tag="LanDevices LanSharing LanSource 配对 局域网 设备 pairing network discovery HTTPS">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <PathIcon Classes="navIcon" Width="17" Height="17" Data="M3 3h18v12h-7v3h5v2H5v-2h5v-3H3zm2 2v8h14V5z"/>
+                            <TextBlock Text="{DynamicResource LanDevices}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <ScrollViewer Margin="30,10,12,0" Padding="0,0,16,12" AllowAutoHide="False" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="0,0,0,16" MaxWidth="720">
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,12">
+                                    <TextBlock Text="{DynamicResource LanSharing}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource LanSharingHint}" Classes="hint" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="LanServiceStatus" Classes="hint" TextWrapping="Wrap"/>
+                                    <CheckBox x:Name="LanEnabled" Content="{DynamicResource LanEnable}"/>
+                                    <TextBox x:Name="LanName" Watermark="{DynamicResource LanDeviceName}" MaxLength="64" AutomationProperties.Name="{DynamicResource LanDeviceName}"/>
+                                    <Button Classes="action" Content="{DynamicResource LanSaveSharing}" Click="LanSave_Click"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,12">
+                                    <TextBlock Text="{DynamicResource LanInvite}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource LanInviteHint}" Classes="hint" TextWrapping="Wrap"/>
+                                    <ComboBox x:Name="LanAddressChoice" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource LanAddress}"/>
+                                    <CheckBox x:Name="LanControlGrant" Content="{DynamicResource LanAllowControl}"/>
+                                    <WrapPanel>
+                                        <Button Classes="action" Content="{DynamicResource LanCreateInvite}" Click="LanInvite_Click" Margin="0,0,8,8"/>
+                                        <Button Classes="action" Content="{DynamicResource LanCancelInvite}" Click="LanCancelInvite_Click" Margin="0,0,8,8"/>
+                                    </WrapPanel>
+                                    <TextBox x:Name="LanInvitation" IsReadOnly="True" IsVisible="False" TextWrapping="Wrap" MaxHeight="120" AutomationProperties.Name="{DynamicResource LanInvite}"/>
+                                    <Button x:Name="LanCopyInvite" Classes="action" IsVisible="False" Content="{DynamicResource LanCopy}" Click="LanCopy_Click"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,12">
+                                    <TextBlock Text="{DynamicResource LanPair}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource LanPairHint}" Classes="hint" TextWrapping="Wrap"/>
+                                    <Button x:Name="LanDiscoverButton" Classes="action" Content="{DynamicResource LanDiscover}" Click="LanDiscover_Click"/>
+                                    <ItemsControl x:Name="LanFound" MaxHeight="150"/>
+                                    <TextBox x:Name="LanPairInput" Watermark="{DynamicResource LanPasteInvite}" MaxLength="4096" TextWrapping="Wrap" MaxHeight="120" AutomationProperties.Name="{DynamicResource LanPasteInvite}"/>
+                                    <Button x:Name="LanPairButton" Classes="action" Content="{DynamicResource LanPair}" Click="LanPair_Click"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,12">
+                                    <TextBlock Text="{DynamicResource LanSource}" Classes="section"/>
+                                    <TextBlock x:Name="LanCurrentSource" Classes="hint" TextWrapping="Wrap"/>
+                                    <ComboBox x:Name="LanPeers" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource LanSource}"/>
+                                    <WrapPanel>
+                                        <Button Classes="action" Content="{DynamicResource LanUseSource}" Click="LanSource_Click" Margin="0,0,8,8"/>
+                                        <Button Classes="action" Content="{DynamicResource LanLocalSource}" Click="LanLocal_Click" Margin="0,0,8,8"/>
+                                        <Button Classes="action" Content="{DynamicResource LanForget}" Click="LanForget_Click" Margin="0,0,8,8"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="card">
+                                <StackPanel Spacing="12" Margin="0,12">
+                                    <TextBlock Text="{DynamicResource LanAuthorized}" Classes="section"/>
+                                    <TextBlock Text="{DynamicResource LanRevokeHint}" Classes="hint" TextWrapping="Wrap"/>
+                                    <ComboBox x:Name="LanGrants" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource LanAuthorized}"/>
+                                    <WrapPanel>
+                                        <Button Classes="action" Content="{DynamicResource LanRefresh}" Click="LanRefresh_Click" Margin="0,0,8,8"/>
+                                        <Button Classes="action" Content="{DynamicResource LanRevoke}" Click="LanRevoke_Click" Margin="0,0,8,8"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="LanStatus" Classes="hint" TextWrapping="Wrap"/>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

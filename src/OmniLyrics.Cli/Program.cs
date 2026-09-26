@@ -21,3 +21,8 @@ catch (Exception error) when (error is IOException or System.Net.Sockets.SocketE
     Console.Error.WriteLine(Localization.Text("Could not start the control service. Check the configured address and whether its ports are already in use."));
     Environment.ExitCode = 2;
 }
+catch (Exception error) when (error is HttpRequestException or InvalidOperationException or OperationCanceledException)
+{
+    Console.Error.WriteLine(Localization.Get("LanFailed"));
+    Environment.ExitCode = 2;
+}

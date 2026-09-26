@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.NetworkInformation;
 using OmniLyrics.Core.Configuration;
 using OmniLyrics.Core.Lyrics.Models;
 using OmniLyrics.Core.Shared;
@@ -8,7 +7,7 @@ using OmniLyrics.Web;
 namespace OmniLyrics.Core;
 
 /// <summary>All frontends attach first and elect a single local service owner when no service remains.</summary>
-public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposable, IPlaybackQueueSource, ITrackFavorites
+public partial class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposable, IPlaybackQueueSource, ITrackFavorites
 {
     private readonly Func<IPlayerBackend> _createLocal;
     private readonly Func<ServerSettings> _settings;
@@ -46,15 +45,20 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
     public LyricsManager Lyrics { get; }
     public bool OwnsService => _ownsService;
     public ServiceRole Role => _role;
-    public LyricsSnapshot? RemoteSnapshot => _remote?.Snapshot;
+    public LyricsSnapshot? RemoteSnapshot => HasLanSelection ? _lanFrame?.Snapshot : _remote?.Snapshot;
     public string? LastControlError { get; private set; }
     private string? _serviceError;
     public string? ServiceError
     {
-        get { lock (_gate) return _serviceError ?? (_local as IPlayerBackendStatus)?.ConnectionError; }
+        get { if (HasLanSelection) return _lanFrame == null ? Localization.Get("LanOffline") : null; lock (_gate) return _serviceError ?? (_local as IPlayerBackendStatus)?.ConnectionError; }
         private set => _serviceError = value;
     }
     public override PlayerState? GetCurrentState()
+    {
+        if (HasLanSelection) return _lanFrame?.Snapshot.State;
+        return GetLocalServiceState();
+    }
+    private PlayerState? GetLocalServiceState()
     {
         var remote = _remote;
         if (remote != null) return remote.Snapshot.State;
@@ -63,6 +67,12 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
 
     public (List<LyricsLine>? Lines, bool Loading, long Revision) CaptureLyrics(PlayerState? state)
     {
+        if (HasLanSelection)
+        {
+            var frame = _lanFrame;
+            return frame?.Snapshot.State is { } current && state != null && LyricsCache.TrackKey(current) == LyricsCache.TrackKey(state)
+                ? (frame.Snapshot.Lyrics, frame.Snapshot.Loading, frame.Revision) : (null, false, _remoteRevision);
+        }
         var remote = _remote;
         if (remote == null) return Lyrics.Capture(state);
         return state != null && remote.Snapshot.State != null
@@ -79,22 +89,17 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
             if (_run != null) return Task.CompletedTask;
             _cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
             _run = Task.Run(() => RunAsync(_cancellation.Token), CancellationToken.None);
+            // Explicit service addresses are isolated embedders/tests, not the user's selected LAN source.
+            if (_serviceAddress == null) _lanRun = Task.Run(() => RunLanAsync(_cancellation.Token), CancellationToken.None);
         }
         return Task.CompletedTask;
-    }
-
-    private static bool IsLocalHost(string host)
-    {
-        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
-        if (!IPAddress.TryParse(host, out var address)) return false;
-        return IPAddress.IsLoopback(address) || NetworkInterface.GetAllNetworkInterfaces()
-            .SelectMany(n => n.GetIPProperties().UnicastAddresses).Any(a => a.Address.Equals(address));
     }
 
     private async Task RunAsync(CancellationToken token)
     {
         ServiceElection? election = null;
         ServerSettings? active = null;
+        LanSettings? activeLan = null;
         long unavailableSince = 0, retryAt = 0;
         try
         {
@@ -104,12 +109,13 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                 {
                     var settings = _settings();
                     UserConfiguration.ValidateServer(settings);
-                    if (settings != active)
+                    var lan = UserConfiguration.LoadLan() with { SelectedDeviceId = null };
+                    if (settings != active || lan != activeLan)
                     {
                         await StopOwnedAsync();
                         election?.Dispose(); election = null;
-                        active = settings;
-                        if (_hostService && IsLocalHost(settings.ControlHost)) election = new(settings, _role);
+                        active = settings; activeLan = lan; _sharingSettings = lan;
+                        if (_hostService) election = new(settings, _role);
                         unavailableSince = 0;
                     }
                     election?.Heartbeat();
@@ -123,12 +129,17 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                         else
                         {
                             ServiceError = null;
-                            _ = Lyrics.UpdateAsync(GetCurrentState(), true);
+                            await StartLanServiceAsync(lan, token);
+                            _ = Lyrics.UpdateAsync(GetLocalServiceState(), true);
                             await Task.Delay(100, token);
                             continue;
                         }
                     }
-                    var address = _serviceAddress?.Invoke() ?? new UriBuilder("http", settings.ControlHost, settings.HttpPort).Uri;
+                    // Local IPC must never fall back to an unauthenticated LAN address.
+                    var localHost = settings.ControlHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                        || IPAddress.TryParse(settings.ControlHost, out var controlIp) && IPAddress.IsLoopback(controlIp)
+                        ? settings.ControlHost : "127.0.0.1";
+                    var address = _serviceAddress?.Invoke() ?? new UriBuilder("http", localHost, settings.HttpPort).Uri;
                     var snapshot = await _client.TryReadAsync(address, token);
                     if (token.IsCancellationRequested) break;
                     if (snapshot != null)
@@ -141,7 +152,7 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
                         unavailableSince = 0;
                         ServiceError = null;
                         if (newlyConnected) Console.Error.WriteLine("Connected to existing OmniLyrics service.");
-                        EmitStateChanged(snapshot.State!);
+                        if (!HasLanSelection) EmitStateChanged(snapshot.State!);
                     }
                     else
                     {
@@ -209,7 +220,8 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
         lock (_gate) _local = _createLocal();
         // Bind BOTH protocols before connecting to players. A foreign listener is never interrupted.
         _udp = new CommandServer(_local, settings.ListenAddress, settings.UdpPort);
-        _web = new WebApiServer(_local, new SessionLyrics(this), settings.HttpPort, settings.ListenAddress, Lyrics, _role.ToString().ToLowerInvariant());
+        _web = new WebApiServer(_local, new SessionLyrics(this), settings.HttpPort, settings.ListenAddress, Lyrics, _role.ToString().ToLowerInvariant(), sharingStatus: () => new(_sharingSettings.Enabled,
+                _lanWeb?.IsRunning == true, _lanHostError));
         await _web.StartAsync(token);
         _local.OnStateChanged += ForwardLocal;
         await _local.StartAsync(_localCancellation.Token);
@@ -221,12 +233,12 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
 
     private sealed class SessionLyrics(SharedPlayerSession session) : ILyricsProvider
     {
-        public List<LyricsLine>? CurrentLyrics => session.Lyrics.Capture(session.GetCurrentState()).Lines;
+        public List<LyricsLine>? CurrentLyrics => session.Lyrics.Capture(session.GetLocalServiceState()).Lines;
     }
 
     private void ForwardLocal(object? sender, PlayerState state)
     {
-        if (_remote == null && !_disposed) EmitStateChanged(state);
+        if (_remote == null && !HasLanSelection && !_disposed) EmitStateChanged(state);
     }
 
     private void StopLocal()
@@ -248,6 +260,8 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
     private async Task StopOwnedAsync()
     {
         _ownsService = false;
+        if (_lanWeb != null) { await _lanWeb.DisposeAsync(); _lanWeb = null; }
+        _lanRetryAt = 0; _lanHostError = null;
         _localCancellation?.Cancel();
         _udp?.Dispose(); _udp = null;
         if (_udpTask != null)
@@ -266,7 +280,12 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
         var remote = _remote;
         try
         {
-            if (remote != null)
+            if (HasLanSelection)
+            {
+                if (_lanFrame == null || _lanClient == null) throw new InvalidOperationException();
+                await _lanClient.ControlAsync(action, position, _cancellation?.Token ?? default);
+            }
+            else if (remote != null)
                 await _client.ControlAsync(remote.Address, action, position, _cancellation?.Token ?? default);
             else
             {
@@ -308,6 +327,7 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
             run = _run;
         }
         if (run != null) await run.ConfigureAwait(false);
+        if (_lanRun != null) await _lanRun.ConfigureAwait(false);
         _client.Dispose(); _cancellation?.Dispose();
     }
 
@@ -316,7 +336,8 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
         var remote = _remote;
         IPlayerBackend? local;
         lock (_gate) local = _local;
-        var result = remote != null ? await _client.GetFavoriteAsync(remote.Address, token)
+        var result = HasLanSelection ? _lanFrame != null && _lanClient != null ? await _lanClient.FavoriteAsync(null, token) : null
+            : remote != null ? await _client.GetFavoriteAsync(remote.Address, token)
             : local is ITrackFavorites favorites ? await favorites.GetFavoriteAsync(expected, token) : null;
         return result?.MediaKey == OmniLyrics.Core.Shared.LyricsCache.TrackKey(expected) ? result : null;
     }
@@ -327,6 +348,8 @@ public class SharedPlayerSession : BasePlayerBackend, IDisposable, IAsyncDisposa
         var remote = _remote;
         IPlayerBackend? local;
         lock (_gate) local = _local;
+        if (HasLanSelection) return _lanFrame != null && _lanClient != null
+            ? await _lanClient.FavoriteAsync(new(previous, favorite), token) : null;
         return remote != null ? await _client.SetFavoriteAsync(remote.Address, previous, favorite, token)
             : local is ITrackFavorites favorites ? await favorites.SetFavoriteAsync(expected, previous, favorite, token) : null;
     }

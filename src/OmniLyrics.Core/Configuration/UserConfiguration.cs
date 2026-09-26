@@ -325,7 +325,7 @@ public static partial class UserConfiguration
             throw new InvalidDataException("Unsupported configuration version.");
         var language = root["language"]?.GetValue<string>() ?? "auto";
         if (language is not ("auto" or "en" or "zh-CN")) throw new InvalidDataException("Unknown language.");
-        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root); ParseSpotifyClientId(root);
+        ParseAppearance(root); ParseLyrics(root); ParseCider(root); ParseThemePresets(root); ParseSpotifyClientId(root); ParseLan(root);
         var server = root["server"];
         ValidateServer(new(server?["listenAddress"]?.GetValue<string>() ?? "127.0.0.1",
             server?["httpPort"]?.GetValue<int>() ?? 27270, server?["udpPort"]?.GetValue<int>() ?? 32651,

@@ -35,6 +35,7 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         InitializeMacEnvironment();
         InitializeFavorites();
+        InitializeLan();
         BlurMode.PropertyChanged += (_, change) =>
         {
             if (change.Property == Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty && !_reloading)
@@ -140,6 +141,7 @@ public partial class SettingsWindow : Window
             NoTokenMode.IsChecked = TokenMode.IsChecked != true;
             UpdateTokenHint();
             ReloadFavorites(preserveToken);
+            ReloadLan(preserveToken);
         }
         catch
         {
@@ -297,6 +299,7 @@ public partial class SettingsWindow : Window
             UserConfiguration.SavePreferences(appearance, lyrics,
                 changedCider ? cider : null, changedCider && cider.Authentication == "token" ? TokenInput.Text : null);
             if (SpotifyClientIdInput.Text != _loadedSpotifyClientId) UserConfiguration.SaveSpotifyClientId(SpotifyClientIdInput.Text ?? "");
+            SaveLanSharing();
             _watcher.AcceptCurrent();
             AppearancePreferences.Refresh();
             ReloadSettings();
@@ -311,6 +314,8 @@ public partial class SettingsWindow : Window
         var key = (tab.Tag?.ToString() ?? "General").Split(' ')[0];
         PageTitle.Text = Localization.Get(key);
         PageSubtitle.Text = Localization.Get(key + "Subtitle");
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => tab.BringIntoView());
+        if (tab == LanTab) _ = RefreshLanStatusAsync();
         if (tab == MacEnvironmentTab) _ = RefreshMacEnvironmentAsync();
     }
 
@@ -431,6 +436,7 @@ public partial class SettingsWindow : Window
             VersionText.Text = Localization.Format("Version", ApplicationInfo.Version);
             UpdateTokenHint();
             RenderMacEnvironment();
+            ReloadLan(true);
             SetYesPlayMusicStatus(_yesPlayMusicStatusKey);
             SettingsTabs_SelectionChanged(this, null!);
         }
