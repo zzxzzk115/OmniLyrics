@@ -13,6 +13,46 @@ Both include the .NET runtime and share the user's existing OmniLyrics configura
 
 ## Install
 
+### Maintainer repositories
+
+After the maintainer completes the setup below and the first publication succeeds, users can add the public repository once and receive subsequent releases through their package manager. **These channels are not live yet.** `OWNER/REPOSITORY` below is a placeholder for the maintainer's Cloudsmith repository, not a usable OmniLyrics source address. Replace it with the published repository slug before running the commands. Users do not need a Cloudsmith account or API key.
+
+#### Debian / Ubuntu
+
+```bash
+repository='OWNER/REPOSITORY'
+curl -fsSL "https://dl.cloudsmith.io/public/$repository/cfg/setup/bash.deb.sh" -o /tmp/omnilyrics-repository.sh
+sudo bash /tmp/omnilyrics-repository.sh
+sudo apt update
+sudo apt install omnilyrics
+sudo apt install omnilyrics-cli
+```
+
+#### Fedora
+
+```bash
+repository='OWNER/REPOSITORY'
+curl -fsSL "https://dl.cloudsmith.io/public/$repository/cfg/setup/bash.rpm.sh" -o /tmp/omnilyrics-repository.sh
+sudo bash /tmp/omnilyrics-repository.sh
+sudo dnf install omnilyrics
+sudo dnf install omnilyrics-cli
+```
+
+The setup scripts configure the repository and its signing key. Keep signature verification enabled. Choose either install command, or both. Subsequent updates use `sudo apt update && sudo apt upgrade` or `sudo dnf upgrade`. Native packages are tested on Debian 12, Ubuntu 22.04/24.04 and Fedora 44, on x64 and ARM64; they require glibc 2.35 or later.
+
+#### Arch / CachyOS
+
+Once the two AUR entries are published, install with an AUR helper you already use:
+
+```bash
+yay -S omnilyrics-bin
+yay -S omnilyrics-cli-bin
+```
+
+Use `yay -Syu` for updates. AUR packages use the `-bin` suffix; their commands remain `omnilyrics` and `omnilyrics-cli`. AUR is separate from the official pacman repositories, so `pacman -S omnilyrics` alone will not find these entries. The recipes cover x64 and ARM64; automated AUR installation tests currently run on x64.
+
+### Local package files
+
 For now, download the `omnilyrics-linux-packages-linux-x64` or `omnilyrics-linux-packages-linux-arm64` artifact from a successful [Linux packages](https://github.com/zzxzzk115/OmniLyrics/actions/workflows/linux-packages.yaml) GitHub Actions run and extract it. The existing **0.4.2 release does not contain these native packages**. Published releases can include them in the future. Check the included `SHA256SUMS`, then select the package format and CPU architecture for your system.
 
 | System | x64 architecture | ARM64 architecture |
@@ -76,4 +116,29 @@ makepkg -si
 
 Use the `omnilyrics-cli-bin` directory for the CLI. When preparing a new release, regenerate from its ZIP checksums, validate with `makepkg --printsrcinfo`, and submit the two recipes to their respective AUR repositories. Do not use CI-native-package checksums for portable ZIP sources. AUR recipes disable stripping, which would damage bundled .NET executables.
 
-For a release, use packages from a successful run of the exact release commit. Upload the six packages for each architecture and merge their checksum entries into the release's `SHA256SUMS`, preserving the portable-ZIP entries used by AUR. Upload only revision 1 outputs; revision 2 packages are CI upgrade fixtures. These scripts do not create releases, publish repositories, or submit AUR changes automatically.
+## Publish a release
+
+The [Publish Linux repositories](../../.github/workflows/linux-release.yaml) workflow runs when a stable GitHub Release is published. It builds and tests both architectures, uploads twelve native packages plus a separate `SHA256SUMS-linux-native`, and updates the configured Cloudsmith and AUR channels. Existing portable ZIPs and their `SHA256SUMS` are preserved. Cloudsmith manages signed APT indexes and RPM packages/indexes; AUR recipes verify upstream ZIP checksums. See the official [Cloudsmith signing documentation](https://docs.cloudsmith.com/supply-chain-security/signing-keys).
+
+### One-time maintainer setup
+
+1. Create a **public** Cloudsmith repository under your account/organization. This is your own software source; users subscribe to it without publisher credentials. Keep repository/package signing enabled. Set the GitHub **repository variable** `CLOUDSMITH_REPOSITORY` to its `owner/repository` slug. Consult [Cloudsmith's open-source policy](https://docs.cloudsmith.com/resources/open-source-hosting-policy) and account limits when choosing hosting.
+2. Create the GitHub Actions environment `linux-release`, restrict its deployment branches/tags to your release process, and add the **environment secret** `CLOUDSMITH_API_KEY` for an account with permission to publish to that repository. Cloudsmith supplies the signing key; no private GPG key needs to be checked into this project.
+3. For AUR, register a maintainer account, confirm that `omnilyrics-bin` and `omnilyrics-cli-bin` are available or that your account maintains them, and register a dedicated SSH public key. Add the corresponding **environment secret** `AUR_SSH_PRIVATE_KEY`. Set the **repository variable** `AUR_PUBLISH_ENABLED` to `true` and the **environment variable** `AUR_KNOWN_HOSTS` to a verified `aur.archlinux.org` known-hosts entry. Verify the host key against [Arch's published fingerprints](https://wiki.archlinux.org/title/AUR_submission_guidelines#Authentication); the publisher requires strict host-key checking.
+4. After the first successful publication and public installation checks, replace `OWNER/REPOSITORY` in both guides with the actual slug, publish the signing-key fingerprint/link, and remove the “not live yet” notices. Do the same for the AUR availability notices only after both entries exist.
+
+Cloudsmith and AUR are independently enabled by their repository variables. An unset channel is explicitly reported as skipped; an enabled channel with missing credentials fails. You may enable either first. Keep credentials in GitHub settings, never in Markdown or Git.
+
+### Each release
+
+Prepare a stable `vX.Y.Z` tag whose commit is on `master` and whose `Directory.Build.props` version matches. The tagged commit must include these publishing scripts, so this workflow is intended for releases after 0.4.2. Before publishing the Release, upload the four Linux portable ZIPs (`omnilyrics-{gui,cli}-{linux-x64,linux-arm64}.zip`) and their entries in `SHA256SUMS`; the AUR build checks consume these exact release assets. Publishing the Release triggers the workflow automatically.
+
+To retry or publish a previously prepared release manually, choose **Publish Linux repositories → Run workflow → master**, then enter its tag, or run:
+
+```bash
+gh workflow run linux-release.yaml --ref master -f tag=vX.Y.Z
+```
+
+Replace `vX.Y.Z` with the actual stable tag. Only tested revision 1 packages are published; revision 2 files remain CI upgrade fixtures. The publication jobs run after both architecture builds pass and receive credentials only at publication time. After Cloudsmith synchronization, separate containers install both packages from the public source with no publisher credentials, on both architectures.
+
+If a channel fails, use **Re-run failed jobs** to reuse the tested artifacts. Matching existing uploads are skipped; conflicting files are never overwritten, and AUR is never force-pushed or downgraded. Cloudsmith adds an upstream-checksum tag because signing can change an RPM's served checksum. A package still syncing or with different upstream bytes requires inspection in Cloudsmith before retrying. Rebuilding an already published version can produce different bytes and is deliberately rejected; use a new release for changed binaries.

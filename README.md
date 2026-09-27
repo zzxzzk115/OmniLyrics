@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-Native Linux packages are built separately as **`omnilyrics`** (GUI) and **`omnilyrics-cli`** (CLI/TUI), in DEB, RPM and Arch formats. See [Linux package installation](./build/linux/README.md) for local APT/DNF/pacman commands and AUR recipes. These packages are currently available as CI artifacts; the 0.4.2 release still contains portable ZIPs. Hosted APT/DNF repositories and public AUR entries are not yet available.
+Native Linux packages are built separately as **`omnilyrics`** (GUI) and **`omnilyrics-cli`** (CLI/TUI), in DEB, RPM and Arch formats. See [Linux package installation](./build/linux/README.md) for local APT/DNF/pacman commands and AUR recipes. These packages are currently available as CI artifacts; the 0.4.2 release still contains portable ZIPs. The [Linux guide](./build/linux/README.md#maintainer-repositories) also covers adding the maintainer’s APT/DNF source and using AUR; those channels require first-time setup and are not live yet.
 
 #### macOS
 

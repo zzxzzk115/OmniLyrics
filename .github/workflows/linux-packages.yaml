@@ -1,13 +1,21 @@
 name: Linux packages
 
 on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
   workflow_dispatch:
   push:
     branches: [master]
-    paths: ['build/linux/**', 'tests/linux-package*', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
+    paths: ['build/linux/**', 'tests/linux-package*', 'tests/linux-publish*', '.github/workflows/linux-release.yaml', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
   pull_request:
     branches: [dev, master]
-    paths: ['build/linux/**', 'tests/linux-package*', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
+    paths: ['build/linux/**', 'tests/linux-package*', 'tests/linux-publish*', '.github/workflows/linux-release.yaml', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
 
 permissions:
   contents: read
@@ -27,6 +35,11 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          persist-credentials: false
+      - name: Check publishing safeguards
+        run: python3 tests/linux-publish.py
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -67,8 +80,9 @@ jobs:
         if: matrix.rid == 'linux-x64'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          tag=${RELEASE_TAG:-$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)}
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir "$RUNNER_TEMP/aur"
           python3 build/linux/make-aur.py --version "${tag#v}" --checksums "$RUNNER_TEMP/aur/SHA256SUMS" --output "$RUNNER_TEMP/aur/recipes"
           docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/aur/recipes:/recipes:ro" archlinux:base-devel bash /source/tests/linux-package-aur.sh

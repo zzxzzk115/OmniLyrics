@@ -13,6 +13,46 @@ OmniLyrics 提供两个独立的原生软件包：
 
 ## 安装
 
+### 维护者软件源
+
+维护者完成下方的一次性配置并首次发布成功后，用户只需添加一次公共软件源，后续即可通过包管理器获取新版本。**这些渠道目前尚未上线。** 下文的 `OWNER/REPOSITORY` 是维护者 Cloudsmith 仓库的占位符，并非可用的 OmniLyrics 源地址；运行命令前需替换为公布的仓库标识。用户无需 Cloudsmith 账号或 API key。
+
+#### Debian / Ubuntu
+
+```bash
+repository='OWNER/REPOSITORY'
+curl -fsSL "https://dl.cloudsmith.io/public/$repository/cfg/setup/bash.deb.sh" -o /tmp/omnilyrics-repository.sh
+sudo bash /tmp/omnilyrics-repository.sh
+sudo apt update
+sudo apt install omnilyrics
+sudo apt install omnilyrics-cli
+```
+
+#### Fedora
+
+```bash
+repository='OWNER/REPOSITORY'
+curl -fsSL "https://dl.cloudsmith.io/public/$repository/cfg/setup/bash.rpm.sh" -o /tmp/omnilyrics-repository.sh
+sudo bash /tmp/omnilyrics-repository.sh
+sudo dnf install omnilyrics
+sudo dnf install omnilyrics-cli
+```
+
+配置脚本会添加软件源及其签名公钥，请保持签名验证开启。两个安装命令可任选其一，也可都执行。后续通过 `sudo apt update && sudo apt upgrade` 或 `sudo dnf upgrade` 更新。原生包已在 x64 和 ARM64 的 Debian 12、Ubuntu 22.04/24.04、Fedora 44 上测试，需要 glibc 2.35 或更新版本。
+
+#### Arch / CachyOS
+
+两个 AUR 条目发布后，可使用你已有的 AUR 助手安装：
+
+```bash
+yay -S omnilyrics-bin
+yay -S omnilyrics-cli-bin
+```
+
+使用 `yay -Syu` 更新。AUR 包名带有 `-bin` 后缀，命令仍是 `omnilyrics` 与 `omnilyrics-cli`。AUR 与 pacman 官方仓库不同，因此直接执行 `pacman -S omnilyrics` 无法找到这些条目。构建文件支持 x64 和 ARM64，目前 AUR 自动安装测试运行于 x64。
+
+### 本地软件包文件
+
 目前请从成功的 [Linux packages](https://github.com/zzxzzk115/OmniLyrics/actions/workflows/linux-packages.yaml) GitHub Actions 构建中下载 `omnilyrics-linux-packages-linux-x64` 或 `omnilyrics-linux-packages-linux-arm64` 产物并解压。现有 **0.4.2 Release 尚未包含这些原生包**，后续发布可附带它们。核对包内 `SHA256SUMS` 后，选择系统对应的包格式与处理器架构。
 
 | 系统 | x64 架构名 | ARM64 架构名 |
@@ -76,4 +116,29 @@ makepkg -si
 
 CLI 使用 `omnilyrics-cli-bin` 目录。准备新版本时，应根据该版本 ZIP 的校验和重新生成，用 `makepkg --printsrcinfo` 验证，再分别提交到对应 AUR 仓库。便携 ZIP 来源不能使用 CI 原生软件包的校验和。构建文件禁用了 strip，避免破坏 .NET 捆绑可执行程序。
 
-正式发布应使用与发布提交完全一致且检查通过的构建产物。上传每种架构的六个包，将其校验和合并到 Release 的 `SHA256SUMS`，保留 AUR 使用的便携 ZIP 校验和。只上传修订 1 的产物；修订 2 仅为 CI 升级测试准备。脚本不会自动创建 Release、发布软件源或提交 AUR 修改。
+## 发布版本
+
+[Publish Linux repositories](../../.github/workflows/linux-release.yaml) 工作流会在稳定版 GitHub Release 发布时运行。它构建并测试两种架构，上传十二个原生包及独立的 `SHA256SUMS-linux-native`，然后更新已配置的 Cloudsmith 和 AUR 渠道。已有便携 ZIP 及其 `SHA256SUMS` 会保留。Cloudsmith 管理 APT 索引、RPM 软件包和索引的签名；AUR 构建文件校验上游 ZIP 的校验和。参见 [Cloudsmith 官方签名文档](https://docs.cloudsmith.com/supply-chain-security/signing-keys)。
+
+### 维护者一次性配置
+
+1. 在你的 Cloudsmith 账号或组织下创建一个**公共**仓库。这就是你维护的软件源，用户订阅时无需发布者凭据。保持仓库和软件包签名开启。将 GitHub **仓库变量** `CLOUDSMITH_REPOSITORY` 设为其 `owner/repository` 标识。选择托管方式时，请查看 [Cloudsmith 开源项目政策](https://docs.cloudsmith.com/resources/open-source-hosting-policy)及账号额度。
+2. 创建 GitHub Actions 环境 `linux-release`，按发布流程限制可部署的分支和标签，添加有权向该仓库发布的账号对应的**环境 secret** `CLOUDSMITH_API_KEY`。Cloudsmith 提供签名密钥，无需将 GPG 私钥提交到项目中。
+3. 对于 AUR，注册维护者账号，确认 `omnilyrics-bin` 和 `omnilyrics-cli-bin` 名称可用或已由你的账号维护，并登记一个专用 SSH 公钥。将对应私钥设为**环境 secret** `AUR_SSH_PRIVATE_KEY`。将**仓库变量** `AUR_PUBLISH_ENABLED` 设为 `true`，并将**环境变量** `AUR_KNOWN_HOSTS` 设为已核验的 `aur.archlinux.org` known-hosts 条目。请根据 [Arch 公布的指纹](https://wiki.archlinux.org/title/AUR_submission_guidelines#Authentication)核对主机密钥；发布脚本会严格校验主机密钥。
+4. 首次发布和公共源安装检查通过后，将两份指南中的 `OWNER/REPOSITORY` 替换为真实标识，公布签名公钥指纹和链接，并移除“尚未上线”提示。AUR 的可用性提示也需在两个条目都存在后再更新。
+
+Cloudsmith 与 AUR 分别通过各自的仓库变量启用。未设置的渠道会明确标记为跳过；已启用却缺少凭据的渠道会失败。可以先启用其中一个。凭据保存在 GitHub 设置中，不要写入 Markdown 或 Git。
+
+### 每次发布
+
+准备稳定版标签 `vX.Y.Z`，其提交应已合入 `master`，且 `Directory.Build.props` 中的版本号一致。标签指向的提交必须包含这些发布脚本，因此本流程适用于 0.4.2 之后的版本。发布 Release 前，先上传四个 Linux 便携 ZIP（`omnilyrics-{gui,cli}-{linux-x64,linux-arm64}.zip`）及其在 `SHA256SUMS` 中的校验和；AUR 构建检查使用的正是这些发布产物。发布 Release 后工作流会自动启动。
+
+如需重试或手动发布已准备好的版本，在 **Publish Linux repositories → Run workflow → master** 中输入标签，或执行：
+
+```bash
+gh workflow run linux-release.yaml --ref master -f tag=vX.Y.Z
+```
+
+将 `vX.Y.Z` 替换为实际稳定版标签。只发布通过测试的修订 1 软件包，修订 2 仍仅用作 CI 升级测试。两种架构的构建均通过后才会开始发布，凭据只在发布阶段提供。Cloudsmith 同步完成后，独立容器会在两种架构上从公共源安装 GUI 和 CLI，不使用发布者凭据。
+
+某一渠道失败时，使用 **Re-run failed jobs** 复用已测试的产物。内容相同的已有上传会跳过，冲突文件不会被覆盖，AUR 不会强制推送或降级。因为签名可能改变 RPM 下载文件的校验和，Cloudsmith 包会添加上游校验和标签。软件包若仍在同步或上游内容不同，需先在 Cloudsmith 中检查后再重试。重新构建已发布版本可能产生不同字节，流程会明确拒绝替换；二进制内容变化应发布新版本。
