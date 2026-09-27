@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <Version>0.4.2</Version>
+        <Version>0.4.3</Version>
         <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(RuntimeIdentifier)/</BaseIntermediateOutputPath>
         <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(RuntimeIdentifier)/</BaseOutputPath>
         <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**</DefaultItemExcludes>

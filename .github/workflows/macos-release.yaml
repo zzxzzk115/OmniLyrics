@@ -1,10 +1,12 @@
-name: Sign and notarize macOS release
+name: Sign and publish macOS release
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag on master (vMAJOR.MINOR.PATCH)'
+        description: 'Published stable release on master (vMAJOR.MINOR.PATCH)'
         required: true
         type: string
 
@@ -12,33 +14,41 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-release-${{ inputs.tag }}
+  group: macos-release-${{ inputs.tag || github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
   build:
-    # Dispatch this workflow from master, never from a PR or an arbitrary branch.
-    if: github.repository == 'zzxzzk115/OmniLyrics' && github.ref == 'refs/heads/master'
+    if: >-
+      github.repository == 'zzxzzk115/OmniLyrics' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+       (github.event_name == 'release' && !github.event.release.prerelease))
     runs-on: macos-15
     timeout-minutes: 30
     outputs:
       commit: ${{ steps.source.outputs.commit }}
+      tag: ${{ steps.source.outputs.tag }}
       artifact: ${{ steps.unsigned.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: master
           fetch-depth: 0
           persist-credentials: false
       - name: Resolve a release tag already merged into master
         id: source
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid release tag'; exit 1; }
           commit=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
           git merge-base --is-ancestor "$commit" HEAD
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Expected a published stable release") else "Stable release verified" end'
           git checkout --detach "$commit"
+          [[ -f build/macos/publish.py ]] || { echo 'Tag must include automated macOS publication'; exit 1; }
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
           echo "Release $RELEASE_TAG: $commit" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
@@ -46,7 +56,7 @@ jobs:
           dotnet-version: 10.0.x
       - name: Build both app bundles without signing credentials
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
         shell: bash
         run: |
           version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
@@ -73,6 +83,8 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     environment: macos-release
+    outputs:
+      artifact: ${{ steps.signed.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -91,7 +103,7 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           MACOS_SIGNING_IDENTITY: ${{ vars.MACOS_SIGNING_IDENTITY }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
         run: bash build/macos/ci-sign-notarize.sh
       - name: Remove temporary credentials even after cancellation or failure
         if: always()
@@ -101,16 +113,49 @@ jobs:
           if [[ -f "$keychain" ]]; then security delete-keychain "$keychain"; fi
           rm -f "$RUNNER_TEMP/omnilyrics-signing.p12"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: signed
         with:
-          name: notarized-macos-${{ inputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: notarized-macos-${{ needs.build.outputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: release-assets/
           if-no-files-found: error
           retention-days: 30
-      - name: Describe verified release artifacts
+      - name: Preserve notarization diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-notarization-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: signed-work/*/package/notarization-*.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish:
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          artifact-ids: ${{ needs.sign.outputs.artifact }}
+          merge-multiple: true
+          path: release-assets
+      - name: Upload verified signed assets without replacing existing downloads
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: python3 build/macos/publish.py --tag "$RELEASE_TAG" --input release-assets
+      - name: Describe published release assets
+        env:
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
           RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
         run: |
-          echo "Signed and notarized $RELEASE_TAG ($RELEASE_COMMIT)." >> "$GITHUB_STEP_SUMMARY"
-          echo 'Download the notarized-macos artifact: two stapled app ZIPs, SHA256SUMS-macos-signed and omnilyrics.rb.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Upload the ZIPs and checksum manifest to that release, then update the tap with the generated Cask.' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "Signed, notarized and published $RELEASE_TAG ($RELEASE_COMMIT)."
+            echo 'Release assets: two stapled app ZIPs, SHA256SUMS-macos-signed and omnilyrics.rb.'
+            echo 'Update Casks/omnilyrics.rb in zzxzzk115/homebrew-tap using the generated Cask.'
+          } >> "$GITHUB_STEP_SUMMARY"

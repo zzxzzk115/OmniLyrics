@@ -1,5 +1,7 @@
 # Signed macOS releases
 
+[English](macos-release.md) | [简体中文](macos-release.zh-CN.md)
+
 OmniLyrics requires macOS 14 or later. Release builds contain the .NET runtime;
 users do not need an SDK. The GUI is distributed as `OmniLyrics.app` for Apple
 Silicon and Intel. Portable executables and unsigned CI previews remain separate.
@@ -58,7 +60,7 @@ Hardened Runtime. The executable requests only JIT and Apple Events entitlements
 To package an existing publish directory, use:
 
 ```bash
-bash build/macos/package.sh /path/to/publish /path/to/package-output 0.4.1
+bash build/macos/package.sh /path/to/publish /path/to/package-output 0.4.3
 ```
 
 For formal signing, publish with `-p:IncludeNativeLibrariesForSelfExtract=false`
@@ -131,31 +133,41 @@ the shared OmniLyrics configuration directory, which may also be used by the CLI
 
 ## GitHub-hosted signing and notarization
 
-[Sign and notarize macOS release](../.github/workflows/macos-release.yaml) runs on
-GitHub-hosted macOS runners. Ordinary PR builds stay credential-free. The release
-workflow is dispatched from `master` with an existing `vMAJOR.MINOR.PATCH` tag;
-it rejects tags whose commit is not already merged into `master`, and rejects a
-tag that differs from the app version. It resolves the tag to an exact commit
-before building.
+[Sign and publish macOS release](../.github/workflows/macos-release.yaml) runs on
+GitHub-hosted macOS runners when a stable GitHub Release is published. You can
+also dispatch it from `master` with an already published `vMAJOR.MINOR.PATCH`
+release. It rejects tags not merged into `master`, drafts, prereleases, and tags
+that differ from the project version. The tagged source must contain the
+publication scripts, so automated upload is available from 0.4.3 onward.
+Merging branches or pushing a tag alone does not publish signed packages.
 
-Compilation happens in a separate job with no signing credentials. The protected
-signing job downloads only the immutable artifact ID produced by that build in
-the same run. It signs both architectures, submits to Apple, waits for acceptance,
-staples, verifies the final archives with Gatekeeper, and uploads one artifact
-containing both signed ZIPs, `SHA256SUMS-macos-signed`, and `omnilyrics.rb`.
-Neither job publishes a release or writes to the repository; both tokens are
-read-only. Use the release and Cask instructions above to publish the outputs.
-The signing job does not launch the application or run tests with credentials.
+The jobs have separate responsibilities:
+
+1. **Build:** compile Apple Silicon and Intel app bundles from the exact tagged
+   commit, without signing credentials.
+2. **Sign:** download only that build's immutable artifact ID, sign each native
+   library and the app, submit to Apple, wait for acceptance, staple, and verify
+   the final archives with Gatekeeper. Credentials are limited to this job; the
+   application is never launched here.
+3. **Publish:** download only the signing job's immutable artifact ID and upload
+   both signed ZIPs, `SHA256SUMS-macos-signed`, and `omnilyrics.rb` to the existing
+   Release. Only this job has `contents: write`; it receives no Apple credentials.
+
+The publisher verifies both archive hashes, embedded app versions and generated
+Cask before uploading. Identical existing assets are skipped; different files
+with the same name are rejected before any uploads. Portable ZIPs, Linux native
+packages and their separate checksum manifests are unchanged. The generated
+Cask still needs to be committed to `zzxzzk115/homebrew-tap`; the repository's
+`GITHUB_TOKEN` cannot write to a different repository.
 
 ### One-time repository configuration
 
-In **Settings → Environments**, create `macos-release` **before running the
-workflow**. Add a required maintainer reviewer and allow deployments only from
-the `master` branch. Review each requested tag and resolved commit before approval.
-A solo maintainer must leave “Prevent self-review” unchecked to approve their own
-manual run. Workflow YAML cannot enforce these server-side protection settings.
-Review changes to this workflow and `build/` before merging them. Protect `master`
-and release tags from unreviewed changes according to your repository policy.
+In **Settings → Environments**, create `macos-release`. Under **Deployment
+branches and tags → Selected branches and tags**, add a **branch** rule `master`
+for manual runs and a **tag** rule `v*` for Release-triggered runs. A branch-only
+rule would block automatic Release signing. Required reviewers are optional;
+if enabled, each signing job waits for approval. A solo maintainer who approves
+their own runs must leave “Prevent self-review” unchecked.
 
 Set these **Environment Secrets**, not ordinary repository-wide secrets:
 
@@ -190,18 +202,24 @@ A local `omnilyrics-notary` Keychain profile does not transfer to GitHub runners
 The workflow currently uses Apple ID credentials; App Store Connect API-key
 authentication is an alternative that would require adapting the import step.
 
-After this workflow is merged into `master` and the release tag exists:
+After this workflow is merged into `master`, publish the matching stable Release
+to start automatically. To trigger it manually for an already published release:
 
 ```bash
 gh workflow run macos-release.yaml --repo zzxzzk115/OmniLyrics \
-  --ref master -f tag=v0.4.2
+  --ref master -f tag=v0.4.3
 ```
 
-Approve the `macos-release` deployment in Actions after checking its source. Apple
-submission timeouts fail the job without publishing incomplete assets. Re-running
-creates a new temporary signing keychain and submits again. Already published
-release files must not be overwritten; build a new version if the signed files
-have changed.
+If environment reviewers are configured, approve the `macos-release` deployment
+in Actions. Apple submission timeouts or rejection stop publication. Diagnostic
+JSON is saved as a short-lived Actions artifact on failure. No signing failure
+falls back to an unsigned release.
+
+If only **Publish** fails, choose **Re-run failed jobs** so it reuses the original
+signed artifact (retained for 30 days). Do not rebuild and replace an existing
+signed archive: secure timestamps can produce different bytes on each signing.
+If signing failed before publication, rerun the failed jobs to create a fresh
+temporary keychain and submit again. None of these steps needs your Mac mini.
 
 The certificate and notary profile live in a temporary keychain under
 `RUNNER_TEMP`, with owner-only credential files and a random keychain password.

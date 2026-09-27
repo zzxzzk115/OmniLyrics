@@ -10,6 +10,18 @@ permissions:
   contents: read
 
 jobs:
+  release_tools:
+    name: Release publishing checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify macOS asset validation and upload retries without credentials
+        run: python3 tests/macos-publish.py
+      - name: Check macOS shell scripts
+        run: |
+          for script in build/macos/*.sh; do bash -n "$script"; done
+          shellcheck build/macos/*.sh
+
   build:
     name: Build (${{ matrix.os }} / ${{
       matrix.rid }} / ${{ matrix.projectName }})

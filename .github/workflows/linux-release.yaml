@@ -1,0 +1,187 @@
+name: Publish Linux repositories
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published stable release on master (vMAJOR.MINOR.PATCH)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-repository-publication
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    if: >-
+      github.repository == 'zzxzzk115/OmniLyrics' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+       (github.event_name == 'release' && !github.event.release.prerelease))
+    runs-on: ubuntu-24.04
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      tag: ${{ steps.source.outputs.tag }}
+      version: ${{ steps.source.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate the release and source commit
+        id: source
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected a stable vX.Y.Z tag'; exit 1; }
+          commit=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$commit" HEAD
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Expected a published stable release") else "Stable release verified" end'
+          git checkout --detach "$commit"
+          python3 - "$RELEASE_TAG" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          assert 'v' + ET.parse('Directory.Build.props').findtext('.//Version') == sys.argv[1], 'Tag/version mismatch'
+          assert pathlib.Path('build/linux/publish.py').exists(), 'Release must include the Linux publishing scripts'
+          PY
+          {
+            echo "commit=$commit"
+            echo "tag=$RELEASE_TAG"
+            echo "version=${RELEASE_TAG#v}"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: resolve
+    uses: ./.github/workflows/linux-packages.yaml
+    with:
+      source_ref: ${{ needs.resolve.outputs.commit }}
+      release_tag: ${{ needs.resolve.outputs.tag }}
+
+  assets:
+    needs: [resolve, build]
+    runs-on: ubuntu-24.04
+    environment: linux-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: omnilyrics-linux-packages-*
+          path: incoming
+      - name: Validate and publish native release assets
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 build/linux/publish.py prepare --version "$VERSION" --input incoming --output release-assets
+          python3 build/linux/publish.py github --version "$VERSION" --input release-assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-assets
+          path: release-assets/*
+          if-no-files-found: error
+
+  cloudsmith:
+    needs: [resolve, assets]
+    if: vars.CLOUDSMITH_REPOSITORY != ''
+    runs-on: ubuntu-24.04
+    environment: linux-release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-release-assets
+          path: release-assets
+      - name: Install publishing client
+        run: |
+          python3 -m venv "$RUNNER_TEMP/cloudsmith"
+          "$RUNNER_TEMP/cloudsmith/bin/pip" install cloudsmith-cli==1.27.0
+          echo "$RUNNER_TEMP/cloudsmith/bin" >> "$GITHUB_PATH"
+      - name: Publish GUI and CLI to the maintainer's APT and DNF repository
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          CLOUDSMITH_REPOSITORY: ${{ vars.CLOUDSMITH_REPOSITORY }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        run: python3 build/linux/publish.py cloudsmith --version "$VERSION" --input release-assets --repository "$CLOUDSMITH_REPOSITORY"
+
+  verify_repository:
+    needs: [resolve, cloudsmith]
+    if: needs.cloudsmith.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+      - name: Install from the public repository without publisher credentials
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          CLOUDSMITH_REPOSITORY: ${{ vars.CLOUDSMITH_REPOSITORY }}
+        run: |
+          for image in debian:12-slim ubuntu:22.04 ubuntu:24.04; do
+            docker run --rm -v "$PWD:/source:ro" "$image" bash /source/tests/linux-package-repository.sh deb "$CLOUDSMITH_REPOSITORY" "$VERSION"
+          done
+          docker run --rm -v "$PWD:/source:ro" fedora:44 bash /source/tests/linux-package-repository.sh rpm "$CLOUDSMITH_REPOSITORY" "$VERSION"
+
+  aur:
+    needs: [resolve, assets]
+    if: vars.AUR_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: linux-release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+      - name: Generate recipes from the published portable ZIP checksums
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$RELEASE_TAG" --pattern SHA256SUMS --dir checksums
+          python3 build/linux/make-aur.py --version "${RELEASE_TAG#v}" --checksums checksums/SHA256SUMS --output recipes
+      - name: Publish both AUR packages
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          AUR_KNOWN_HOSTS: ${{ vars.AUR_KNOWN_HOSTS }}
+        run: python3 build/linux/publish-aur.py --recipes recipes
+
+  summary:
+    needs: [resolve, assets, cloudsmith, verify_repository, aur]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report channel status
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          ASSETS: ${{ needs.assets.result }}
+          CLOUDSMITH: ${{ needs.cloudsmith.result }}
+          AUR: ${{ needs.aur.result }}
+          INSTALL: ${{ needs.verify_repository.result }}
+        run: |
+          {
+            echo "## Linux publication: $RELEASE_TAG"
+            echo "GitHub Release: $ASSETS"
+            echo "APT/DNF (Cloudsmith): $CLOUDSMITH"
+            echo "Arch (AUR): $AUR"
+            echo "Public repository installation: $INSTALL"
+            echo 'Skipped channels are not configured. See build/linux/README.md for first-time setup.'
+          } >> "$GITHUB_STEP_SUMMARY"
