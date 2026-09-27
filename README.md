@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-The current Linux distribution is a portable executable; AUR, APT, DNF and Flatpak installation are not yet provided by this project.
+Native Linux packages are built separately as **`omnilyrics`** (GUI) and **`omnilyrics-cli`** (CLI/TUI), in DEB, RPM and Arch formats. See [Linux package installation](./build/linux/README.md) for local APT/DNF/pacman commands and AUR recipes. These packages are currently available as CI artifacts; the 0.4.2 release still contains portable ZIPs. Hosted APT/DNF repositories and public AUR entries are not yet available.
 
 #### macOS
 
@@ -75,6 +75,8 @@ brew upgrade --cask zzxzzk115/tap/omnilyrics
 For manual installation, download `omnilyrics-gui-osx-arm64-signed.zip` for Apple Silicon or `omnilyrics-gui-osx-x64-signed.zip` for Intel, extract it, then move `OmniLyrics.app` to Applications.
 
 ### omnilyrics-cli — CLI and TUI
+
+On Linux, the native package is **`omnilyrics-cli`** and runs with `omnilyrics-cli`; it can be installed independently of the GUI. The portable alternatives below remain available on all three platforms.
 
 The CLI/TUI is a separate download. On macOS, it is currently distributed as a portable executable; the `omnilyrics` Homebrew Cask installs the GUI.
 

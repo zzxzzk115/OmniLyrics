@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-目前 Linux 提供便携可执行文件，本项目尚未提供 AUR、APT、DNF 或 Flatpak 安装方式。
+Linux 原生包分别提供 **`omnilyrics`**（GUI）和 **`omnilyrics-cli`**（CLI/TUI），支持 DEB、RPM 与 Arch 格式。本地 APT/DNF/pacman 安装命令及 AUR 构建文件见 [Linux 软件包安装说明](./build/linux/README.md)。这些包目前通过 CI 构建产物提供，0.4.2 Release 仍提供便携 ZIP。尚未提供托管的 APT/DNF 软件源或公开 AUR 条目。
 
 #### macOS
 
@@ -75,6 +75,8 @@ brew upgrade --cask zzxzzk115/tap/omnilyrics
 手动安装时，Apple Silicon 下载 `omnilyrics-gui-osx-arm64-signed.zip`，Intel 下载 `omnilyrics-gui-osx-x64-signed.zip`；解压后将 `OmniLyrics.app` 移入“应用程序”。
 
 ### omnilyrics-cli — CLI 与 TUI
+
+Linux 原生包名为 **`omnilyrics-cli`**，通过 `omnilyrics-cli` 命令运行，可独立于 GUI 安装。下方的便携安装方式仍适用于全部三个平台。
 
 CLI/TUI 需要独立下载。macOS 上目前提供便携可执行文件；`omnilyrics` Homebrew Cask 安装的是 GUI。
 

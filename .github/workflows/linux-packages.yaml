@@ -63,6 +63,15 @@ jobs:
         run: |
           version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
           docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/packages:/packages:ro" -v "$RUNNER_TEMP/upgrades:/upgrades:ro" archlinux:base-devel bash /source/tests/linux-package-lifecycle.sh archlinux "$version"
+      - name: Verify AUR recipes against a published release
+        if: matrix.rid == 'linux-x64'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir "$RUNNER_TEMP/aur"
+          python3 build/linux/make-aur.py --version "${tag#v}" --checksums "$RUNNER_TEMP/aur/SHA256SUMS" --output "$RUNNER_TEMP/aur/recipes"
+          docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/aur/recipes:/recipes:ro" archlinux:base-devel bash /source/tests/linux-package-aur.sh
       - name: Upload native packages
         uses: actions/upload-artifact@v4
         with:

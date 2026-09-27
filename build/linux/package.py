@@ -70,7 +70,7 @@ def main():
         source = source.resolve(strict=True)
         with source.open('rb') as f:
             header = f.read(64)
-        if header[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', header, 18)[0] != machine:
+        if len(header) != 64 or header[:6] != b'\x7fELF\x02\x01' or struct.unpack_from('<H', header, 18)[0] != machine:
             parser.error(f'{source} is not a 64-bit ELF for {args.rid}')
         name = 'omnilyrics' if kind == 'gui' else 'omnilyrics-cli'
         binary = f'OmniLyrics.{kind.title()}'
