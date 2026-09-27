@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-Linux 原生包分别提供 **`omnilyrics`**（GUI）和 **`omnilyrics-cli`**（CLI/TUI），支持 DEB、RPM 与 Arch 格式。本地 APT/DNF/pacman 安装命令及 AUR 构建文件见 [Linux 软件包安装说明](./build/linux/README.md)。这些包目前通过 CI 构建产物提供，0.4.2 Release 仍提供便携 ZIP。尚未提供托管的 APT/DNF 软件源或公开 AUR 条目。
+Linux 原生包分别提供 **`omnilyrics`**（GUI）和 **`omnilyrics-cli`**（CLI/TUI），支持 DEB、RPM 与 Arch 格式。本地 APT/DNF/pacman 安装命令及 AUR 构建文件见 [Linux 软件包安装说明](./build/linux/README.zh-CN.md)。这些包目前通过 CI 构建产物提供，0.4.2 Release 仍提供便携 ZIP。尚未提供托管的 APT/DNF 软件源或公开 AUR 条目。
 
 #### macOS
 
