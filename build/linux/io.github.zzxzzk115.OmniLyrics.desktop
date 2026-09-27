@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=OmniLyrics
+GenericName=Desktop lyrics
+GenericName[zh_CN]=桌面歌词
+Comment=Follow your music with synchronized karaoke lyrics
+Comment[zh_CN]=随音乐显示同步逐字歌词
+Exec=omnilyrics
+TryExec=omnilyrics
+Icon=io.github.zzxzzk115.OmniLyrics
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=lyrics;karaoke;music;
+Keywords[zh_CN]=歌词;逐字;音乐;
+StartupWMClass=OmniLyrics.Gui

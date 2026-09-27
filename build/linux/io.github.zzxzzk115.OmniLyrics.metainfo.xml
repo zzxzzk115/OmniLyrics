@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.zzxzzk115.OmniLyrics</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>OmniLyrics</name>
+  <summary>Synchronized desktop lyrics with karaoke highlighting</summary>
+  <summary xml:lang="zh-CN">支持逐字高亮的同步桌面歌词</summary>
+  <description>
+    <p>Follow your music with word-synchronized and bilingual lyrics. Customize the lyric window, connect to supported players, or display lyrics from a paired computer on your local network.</p>
+    <p xml:lang="zh-CN">随音乐显示逐字同步和双语歌词。自定义歌词窗口、连接支持的播放器，或显示已配对局域网电脑的歌词。</p>
+  </description>
+  <launchable type="desktop-id">io.github.zzxzzk115.OmniLyrics.desktop</launchable>
+  <url type="homepage">https://github.com/zzxzzk115/OmniLyrics</url>
+  <url type="bugtracker">https://github.com/zzxzzk115/OmniLyrics/issues</url>
+  <developer id="io.github.zzxzzk115"><name>Lazy_V</name></developer>
+  <content_rating type="oars-1.1" />
+  <supports><control>pointing</control><control>keyboard</control></supports>
+</component>
