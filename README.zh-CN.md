@@ -35,7 +35,30 @@ Linux Waybar（单行模式，--mode line）：
 
 ![CLI（Linux Waybar）](./media/images/cli_linux_waybar.jpg)
 
-## 安装 macOS GUI
+## 安装
+
+桌面歌词窗口选择 **`omnilyrics`（GUI）**；终端歌词、交互式设置与状态栏集成选择 **`omnilyrics-cli`（CLI/TUI）**。可分别安装，也可同时安装；两者共享偏好设置与本机播放服务。
+
+在 [Releases](https://github.com/zzxzzk115/OmniLyrics/releases/latest) 下载对应 ZIP。便携构建已包含 .NET 运行时，无需另行安装 .NET。`x64` 对应 Intel/AMD 64 位处理器，`arm64` 对应 ARM64 处理器，包括 macOS 上的 Apple Silicon。
+
+### omnilyrics — GUI
+
+#### Windows
+
+下载 `omnilyrics-gui-win-x64.zip`，解压到准备长期保留的目录，然后打开 `OmniLyrics.Gui.exe`。
+
+#### Linux
+
+按处理器架构下载 `omnilyrics-gui-linux-x64.zip` 或 `omnilyrics-gui-linux-arm64.zip`。解压后，在解压目录打开终端并运行：
+
+```bash
+chmod +x OmniLyrics.Gui
+./OmniLyrics.Gui
+```
+
+目前 Linux 提供便携可执行文件，本项目尚未提供 AUR、APT、DNF 或 Flatpak 安装方式。
+
+#### macOS
 
 macOS 14 或更新版本可通过[维护者的 Homebrew tap](https://github.com/zzxzzk115/homebrew-tap)安装经过 Developer ID 正式签名和 Apple 公证的应用：
 
@@ -43,7 +66,49 @@ macOS 14 或更新版本可通过[维护者的 Homebrew tap](https://github.com/
 brew install --cask zzxzzk115/tap/omnilyrics
 ```
 
-从“应用程序”打开 **OmniLyrics**。Cask 自动选择 Apple Silicon 或 Intel 版本，无需另装 .NET。手动安装可在 [Releases](https://github.com/zzxzzk115/OmniLyrics/releases) 下载 `omnilyrics-gui-osx-*-signed.zip`。
+从“应用程序”打开 **OmniLyrics**。Cask 自动选择 Apple Silicon 或 Intel 版本。更新时运行：
+
+```bash
+brew upgrade --cask zzxzzk115/tap/omnilyrics
+```
+
+手动安装时，Apple Silicon 下载 `omnilyrics-gui-osx-arm64-signed.zip`，Intel 下载 `omnilyrics-gui-osx-x64-signed.zip`；解压后将 `OmniLyrics.app` 移入“应用程序”。
+
+### omnilyrics-cli — CLI 与 TUI
+
+CLI/TUI 需要独立下载。macOS 上目前提供便携可执行文件；`omnilyrics` Homebrew Cask 安装的是 GUI。
+
+| 平台 | 下载文件 |
+| --- | --- |
+| Windows x64 | `omnilyrics-cli-win-x64.zip` |
+| Linux x64 | `omnilyrics-cli-linux-x64.zip` |
+| Linux ARM64 | `omnilyrics-cli-linux-arm64.zip` |
+| macOS Intel | `omnilyrics-cli-osx-x64.zip` |
+| macOS Apple Silicon | `omnilyrics-cli-osx-arm64.zip` |
+
+将 ZIP 解压到准备长期保留的目录。在 **Windows** 上，于该目录打开 PowerShell 并运行：
+
+```powershell
+.\OmniLyrics.Cli.exe
+```
+
+在 **Linux 或 macOS** 上，于该目录打开终端并运行：
+
+```bash
+chmod +x OmniLyrics.Cli
+./OmniLyrics.Cli
+```
+
+追加 `config` 可打开交互式设置，`--mode line` 用于单行输出，`--mode json` 用于桌面组件。例如，Linux/macOS 运行 `./OmniLyrics.Cli config`，Windows 运行 `.\OmniLyrics.Cli.exe config`。
+
+若希望在 Linux/macOS 上使用 `omnilyrics-cli` 命令，可将解压出的可执行文件安装到用户命令目录：
+
+```bash
+mkdir -p "$HOME/.local/bin"
+install -m 755 OmniLyrics.Cli "$HOME/.local/bin/omnilyrics-cli"
+```
+
+确保 `$HOME/.local/bin` 位于 `PATH` 中，即可在任意目录运行 `omnilyrics-cli` 或 `omnilyrics-cli config`。更多命令见[使用指南](./docs/user-guide.zh-CN.md#cli-与共享配置)。
 
 ## 编译运行
 

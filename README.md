@@ -35,7 +35,30 @@ Linux Waybar (Line Mode, --mode line):
 
 ![CLI (Linux Waybar)](./media/images/cli_linux_waybar.jpg)
 
-## Install the macOS GUI
+## Installation
+
+Choose **`omnilyrics` (GUI)** for the desktop lyrics window or **`omnilyrics-cli` (CLI/TUI)** for terminal lyrics, interactive settings and status-bar integrations. Install either or both; they share preferences and the local playback service.
+
+Download the appropriate ZIP from [Releases](https://github.com/zzxzzk115/OmniLyrics/releases/latest). The portable builds include the .NET runtime, so no separate .NET installation is needed. `x64` is for Intel/AMD 64-bit processors; `arm64` is for ARM64 processors, including Apple Silicon on macOS.
+
+### omnilyrics — GUI
+
+#### Windows
+
+Download `omnilyrics-gui-win-x64.zip`, extract it to a folder you want to keep, then open `OmniLyrics.Gui.exe`.
+
+#### Linux
+
+Download `omnilyrics-gui-linux-x64.zip` or `omnilyrics-gui-linux-arm64.zip` for your architecture. Extract it, open a terminal in the extracted folder, then run:
+
+```bash
+chmod +x OmniLyrics.Gui
+./OmniLyrics.Gui
+```
+
+The current Linux distribution is a portable executable; AUR, APT, DNF and Flatpak installation are not yet provided by this project.
+
+#### macOS
 
 On macOS 14 or later, install the Developer ID signed and Apple-notarized app from the [maintainer's Homebrew tap](https://github.com/zzxzzk115/homebrew-tap):
 
@@ -43,7 +66,49 @@ On macOS 14 or later, install the Developer ID signed and Apple-notarized app fr
 brew install --cask zzxzzk115/tap/omnilyrics
 ```
 
-Open **OmniLyrics** from Applications. The Cask selects Apple Silicon or Intel automatically; no separate .NET installation is needed. For manual installation, choose the `omnilyrics-gui-osx-*-signed.zip` asset from [Releases](https://github.com/zzxzzk115/OmniLyrics/releases).
+Open **OmniLyrics** from Applications. The Cask selects Apple Silicon or Intel automatically. To update it:
+
+```bash
+brew upgrade --cask zzxzzk115/tap/omnilyrics
+```
+
+For manual installation, download `omnilyrics-gui-osx-arm64-signed.zip` for Apple Silicon or `omnilyrics-gui-osx-x64-signed.zip` for Intel, extract it, then move `OmniLyrics.app` to Applications.
+
+### omnilyrics-cli — CLI and TUI
+
+The CLI/TUI is a separate download. On macOS, it is currently distributed as a portable executable; the `omnilyrics` Homebrew Cask installs the GUI.
+
+| Platform | Download |
+| --- | --- |
+| Windows x64 | `omnilyrics-cli-win-x64.zip` |
+| Linux x64 | `omnilyrics-cli-linux-x64.zip` |
+| Linux ARM64 | `omnilyrics-cli-linux-arm64.zip` |
+| macOS Intel | `omnilyrics-cli-osx-x64.zip` |
+| macOS Apple Silicon | `omnilyrics-cli-osx-arm64.zip` |
+
+Extract the ZIP to a folder you want to keep. On **Windows**, open PowerShell in that folder and run:
+
+```powershell
+.\OmniLyrics.Cli.exe
+```
+
+On **Linux or macOS**, open a terminal in that folder and run:
+
+```bash
+chmod +x OmniLyrics.Cli
+./OmniLyrics.Cli
+```
+
+Add `config` to open interactive settings, `--mode line` for single-line output, or `--mode json` for desktop widgets. For example, run `./OmniLyrics.Cli config` on Linux/macOS or `.\OmniLyrics.Cli.exe config` on Windows.
+
+To make the `omnilyrics-cli` command available on Linux/macOS, optionally install the extracted executable into your user command directory:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+install -m 755 OmniLyrics.Cli "$HOME/.local/bin/omnilyrics-cli"
+```
+
+Ensure `$HOME/.local/bin` is in your `PATH`, then run `omnilyrics-cli` or `omnilyrics-cli config` from any directory. See the [user guide](./docs/user-guide.md#cli-and-shared-preferences) for more commands.
 
 ## Build Instruction
 
