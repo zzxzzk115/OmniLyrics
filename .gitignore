@@ -24,3 +24,6 @@ Output/
 # Python integration checks
 __pycache__/
 *.pyc
+
+# macOS app staging
+publish-app/

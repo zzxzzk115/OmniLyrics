@@ -79,7 +79,10 @@ public partial class MainWindow : Window
                 }
             }
             if (e.Property == ActualTransparencyLevelProperty)
+            {
                 ApplyWindowsBackdrop();
+                MacBackdrop.Apply(this, AppearancePreferences.Current.UseBlur);
+            }
         };
         Closing += (s, e) =>
         {
@@ -272,6 +275,7 @@ public partial class MainWindow : Window
         // potentially selecting Transparent next. Do not resend identical hints.
         if (!TransparencyLevelHint.SequenceEqual(levels)) TransparencyLevelHint = levels;
         ApplyWindowsBackdrop();
+        MacBackdrop.Apply(this, settings.UseBlur);
         if (IsVisible) _hyprlandBackdrop.Apply(settings.UseBlur, Title ?? "", force);
     }
 

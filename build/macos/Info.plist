@@ -7,8 +7,9 @@
     <key>CFBundleExecutable</key><string>OmniLyrics.Gui</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleIconFile</key><string>app.icns</string>
-    <key>CFBundleVersion</key><string>0.4.1</string>
-    <key>CFBundleShortVersionString</key><string>0.4.1</string>
+    <key>CFBundleVersion</key><string>0.4.2</string>
+    <key>CFBundleShortVersionString</key><string>0.4.2</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSAppleEventsUsageDescription</key><string>OmniLyrics reads playback information and controls music players to synchronize lyrics and manage favorites.</string>
 </dict></plist>

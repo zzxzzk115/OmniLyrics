@@ -9,6 +9,7 @@ English | [简体中文](./README.zh-CN.md)
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
 
 Five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching are available.
+**0.4.2** adds notarized macOS app releases and keeps the lyric window's native blur visible when it loses focus.
 **0.4.1** adds single-file builds, native macOS playback, more player favorites and secure LAN pairing.
 See the [user guide](./docs/user-guide.md) for configuration and integrations.
 
@@ -34,6 +35,16 @@ Linux Waybar (Line Mode, --mode line):
 
 ![CLI (Linux Waybar)](./media/images/cli_linux_waybar.jpg)
 
+## Install the macOS GUI
+
+On macOS 14 or later, install the Developer ID signed and Apple-notarized app from the [maintainer's Homebrew tap](https://github.com/zzxzzk115/homebrew-tap):
+
+```bash
+brew install --cask zzxzzk115/tap/omnilyrics
+```
+
+Open **OmniLyrics** from Applications. The Cask selects Apple Silicon or Intel automatically; no separate .NET installation is needed. For manual installation, choose the `omnilyrics-gui-osx-*-signed.zip` asset from [Releases](https://github.com/zzxzzk115/OmniLyrics/releases).
+
 ## Build Instruction
 
 Download and install [.NET 10 LTS SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) to build from source.
@@ -48,7 +59,7 @@ The 0.4.1 portable builds package the CLI and GUI as separate single executables
 > brew install media-control
 > ```
 
-macOS GUI builds also include an `OmniLyrics.app.zip` artifact for Finder, alongside the portable executable. The application menu, Dock name and About item use OmniLyrics. The app bundle is ad-hoc signed, not Developer ID notarized. To package a local publish:
+macOS GUI builds also include an `OmniLyrics.app.zip` artifact for Finder, alongside the portable executable. The application menu, Dock name and About item use OmniLyrics. CI artifacts use ad-hoc signatures. For Developer ID signing, Apple notarization and Homebrew Cask distribution, see the [macOS release guide](./docs/macos-release.md). To package a local preview:
 
 ```bash
 bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
