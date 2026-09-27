@@ -15,7 +15,7 @@ Both include the .NET runtime and share the user's existing OmniLyrics configura
 
 ### Maintainer repositories
 
-APT/DNF publication is configured for the maintainer's Cloudsmith repository, `zzxzzk115/omnilyrics`. **Installation from this source is not available yet; public access and the first successful publication are still required.** Once available, add the repository once using the commands below and receive subsequent releases through your package manager. Users do not need a Cloudsmith account or API key.
+The maintainer's Cloudsmith repository, `zzxzzk115/omnilyrics`, has public broadcasting enabled and its APT/DNF setup endpoints are accessible without authentication. **The repository is currently empty; installation will become available after the first successful package publication.** Once packages are available, add the repository once using the commands below and receive subsequent releases through your package manager. Users do not need a Cloudsmith account or API key.
 
 #### Debian / Ubuntu
 
@@ -122,10 +122,10 @@ The [Publish Linux repositories](../../.github/workflows/linux-release.yaml) wor
 
 ### One-time maintainer setup
 
-1. Create a **public** Cloudsmith repository under your account/organization. This is your own software source; users subscribe to it without publisher credentials. Keep repository/package signing enabled. Set the GitHub **repository variable** `CLOUDSMITH_REPOSITORY` to its `owner/repository` slug (`zzxzzk115/omnilyrics` for this project). Consult [Cloudsmith's open-source policy](https://docs.cloudsmith.com/resources/open-source-hosting-policy) and account limits when choosing hosting.
+1. Create a Cloudsmith repository under your account/organization. In the current Cloudsmith UI, open **Settings → General → Start broadcasting**, select **Public**, and confirm. The package page should display **Public broadcast**; creating the repository alone does not enable anonymous downloads. This is your own software source; users subscribe to it without publisher credentials. Keep repository/package signing enabled. Set the GitHub **repository variable** `CLOUDSMITH_REPOSITORY` to its `owner/repository` slug (`zzxzzk115/omnilyrics` for this project). Consult [Cloudsmith's open-source policy](https://docs.cloudsmith.com/resources/open-source-hosting-policy) and account limits when choosing hosting.
 2. Create the GitHub Actions environment `linux-release`, restrict its deployment branches/tags to your release process, and add the **environment secret** `CLOUDSMITH_API_KEY` for an account with permission to publish to that repository. Cloudsmith supplies the signing key; no private GPG key needs to be checked into this project.
 3. For AUR, register a maintainer account, confirm that `omnilyrics-bin` and `omnilyrics-cli-bin` are available or that your account maintains them, and register a dedicated SSH public key. Add the corresponding **environment secret** `AUR_SSH_PRIVATE_KEY`. Set the **repository variable** `AUR_PUBLISH_ENABLED` to `true` and the **environment variable** `AUR_KNOWN_HOSTS` to a verified `aur.archlinux.org` known-hosts entry. Verify the host key against [Arch's published fingerprints](https://wiki.archlinux.org/title/AUR_submission_guidelines#Authentication); the publisher requires strict host-key checking.
-4. After confirming public access, the first successful publication and public installation checks, publish the signing-key fingerprint/link and remove the installation-unavailable notice in both guides. Keep the repository address in both guides synchronized if it changes. Do the same for the AUR availability notices only after both entries exist.
+4. After the first successful publication and public installation checks, publish the signing-key fingerprint/link and remove the empty-repository notice in both guides. Keep the repository address in both guides synchronized if it changes. Do the same for the AUR availability notices only after both entries exist.
 
 Cloudsmith and AUR are independently enabled by their repository variables. An unset channel is explicitly reported as skipped; an enabled channel with missing credentials fails. You may enable either first. Keep credentials in GitHub settings, never in Markdown or Git.
 

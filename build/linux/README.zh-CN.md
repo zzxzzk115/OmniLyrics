@@ -15,7 +15,7 @@ OmniLyrics 提供两个独立的原生软件包：
 
 ### 维护者软件源
 
-APT/DNF 发布已配置为维护者的 Cloudsmith 仓库 `zzxzzk115/omnilyrics`。**目前尚不能从此源安装；仍需确认公共访问并完成首次发布。** 源可用后，按下方命令添加一次，后续即可通过包管理器获取新版本。用户无需 Cloudsmith 账号或 API key。
+维护者的 Cloudsmith 仓库 `zzxzzk115/omnilyrics` 已开启公开分发，APT/DNF 配置入口可匿名访问。**仓库目前仍为空，首次软件包发布成功后才能安装。** 软件包可用后，按下方命令添加一次源，后续即可通过包管理器获取新版本。用户无需 Cloudsmith 账号或 API key。
 
 #### Debian / Ubuntu
 
@@ -122,10 +122,10 @@ CLI 使用 `omnilyrics-cli-bin` 目录。准备新版本时，应根据该版本
 
 ### 维护者一次性配置
 
-1. 在你的 Cloudsmith 账号或组织下创建一个**公共**仓库。这就是你维护的软件源，用户订阅时无需发布者凭据。保持仓库和软件包签名开启。将 GitHub **仓库变量** `CLOUDSMITH_REPOSITORY` 设为其 `owner/repository` 标识（本项目为 `zzxzzk115/omnilyrics`）。选择托管方式时，请查看 [Cloudsmith 开源项目政策](https://docs.cloudsmith.com/resources/open-source-hosting-policy)及账号额度。
+1. 在你的 Cloudsmith 账号或组织下创建仓库。在当前 Cloudsmith 界面进入 **Settings → General → Start broadcasting**，选择 **Public** 并确认。软件包页面应显示 **Public broadcast**；只创建仓库不会开启匿名下载。这就是你维护的软件源，用户订阅时无需发布者凭据。保持仓库和软件包签名开启。将 GitHub **仓库变量** `CLOUDSMITH_REPOSITORY` 设为其 `owner/repository` 标识（本项目为 `zzxzzk115/omnilyrics`）。选择托管方式时，请查看 [Cloudsmith 开源项目政策](https://docs.cloudsmith.com/resources/open-source-hosting-policy)及账号额度。
 2. 创建 GitHub Actions 环境 `linux-release`，按发布流程限制可部署的分支和标签，添加有权向该仓库发布的账号对应的**环境 secret** `CLOUDSMITH_API_KEY`。Cloudsmith 提供签名密钥，无需将 GPG 私钥提交到项目中。
 3. 对于 AUR，注册维护者账号，确认 `omnilyrics-bin` 和 `omnilyrics-cli-bin` 名称可用或已由你的账号维护，并登记一个专用 SSH 公钥。将对应私钥设为**环境 secret** `AUR_SSH_PRIVATE_KEY`。将**仓库变量** `AUR_PUBLISH_ENABLED` 设为 `true`，并将**环境变量** `AUR_KNOWN_HOSTS` 设为已核验的 `aur.archlinux.org` known-hosts 条目。请根据 [Arch 公布的指纹](https://wiki.archlinux.org/title/AUR_submission_guidelines#Authentication)核对主机密钥；发布脚本会严格校验主机密钥。
-4. 确认公共访问、首次发布和公共源安装检查均通过后，公布签名公钥指纹和链接，并移除两份指南中暂不可安装的提示。如仓库地址变化，需同步更新两份指南。AUR 的可用性提示也需在两个条目都存在后再更新。
+4. 首次发布和公共源安装检查通过后，公布签名公钥指纹和链接，并移除两份指南中仓库仍为空的提示。如仓库地址变化，需同步更新两份指南。AUR 的可用性提示也需在两个条目都存在后再更新。
 
 Cloudsmith 与 AUR 分别通过各自的仓库变量启用。未设置的渠道会明确标记为跳过；已启用却缺少凭据的渠道会失败。可以先启用其中一个。凭据保存在 GitHub 设置中，不要写入 Markdown 或 Git。
 
