@@ -1,0 +1,71 @@
+name: Linux packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ['build/linux/**', 'tests/linux-package*', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
+  pull_request:
+    branches: [dev, master]
+    paths: ['build/linux/**', 'tests/linux-package*', '.github/workflows/linux-packages.yaml', 'src/**', 'Directory.Build.props']
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Native packages (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Check desktop integration
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y desktop-file-utils appstream
+          desktop-file-validate build/linux/*.desktop
+          appstreamcli validate --no-net build/linux/*.metainfo.xml
+      - name: Publish separate GUI and CLI executables
+        run: |
+          dotnet restore src/OmniLyrics.Gui
+          dotnet restore src/OmniLyrics.Cli
+          dotnet publish src/OmniLyrics.Gui -c Release -r '${{ matrix.rid }}' -o "$RUNNER_TEMP/publish/gui"
+          dotnet publish src/OmniLyrics.Cli -c Release -r '${{ matrix.rid }}' -o "$RUNNER_TEMP/publish/cli"
+      - name: Install verified packaging tool
+        run: bash build/linux/install-nfpm.sh "$RUNNER_TEMP/tools"
+      - name: Package both components and prepare upgrade fixtures
+        run: |
+          python3 build/linux/package.py --rid '${{ matrix.rid }}' --gui "$RUNNER_TEMP/publish/gui/OmniLyrics.Gui" --cli "$RUNNER_TEMP/publish/cli/OmniLyrics.Cli" --output "$RUNNER_TEMP/packages" --nfpm "$RUNNER_TEMP/tools/nfpm"
+          python3 build/linux/package.py --rid '${{ matrix.rid }}' --gui "$RUNNER_TEMP/publish/gui/OmniLyrics.Gui" --cli "$RUNNER_TEMP/publish/cli/OmniLyrics.Cli" --revision 2 --output "$RUNNER_TEMP/upgrades" --nfpm "$RUNNER_TEMP/tools/nfpm"
+      - name: Test Debian and Ubuntu install, upgrade and removal
+        run: |
+          version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
+          for image in debian:12-slim ubuntu:22.04 ubuntu:24.04; do
+            docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/packages:/packages:ro" -v "$RUNNER_TEMP/upgrades:/upgrades:ro" "$image" bash /source/tests/linux-package-lifecycle.sh deb "$version"
+          done
+      - name: Test Fedora install, upgrade and removal
+        run: |
+          version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
+          docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/packages:/packages:ro" -v "$RUNNER_TEMP/upgrades:/upgrades:ro" fedora:44 bash /source/tests/linux-package-lifecycle.sh rpm "$version"
+      - name: Test Arch install, upgrade and removal
+        if: matrix.rid == 'linux-x64'
+        run: |
+          version=$(dotnet msbuild src/OmniLyrics.Gui/OmniLyrics.Gui.csproj -getProperty:Version)
+          docker run --rm -v "$PWD:/source:ro" -v "$RUNNER_TEMP/packages:/packages:ro" -v "$RUNNER_TEMP/upgrades:/upgrades:ro" archlinux:base-devel bash /source/tests/linux-package-lifecycle.sh archlinux "$version"
+      - name: Upload native packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnilyrics-linux-packages-${{ matrix.rid }}
+          path: ${{ runner.temp }}/packages/*
+          if-no-files-found: error
