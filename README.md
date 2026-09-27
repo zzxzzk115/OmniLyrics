@@ -9,7 +9,7 @@ English | [简体中文](./README.zh-CN.md)
 OmniLyrics: A personal attempt to build the lyric tool I always wanted -- CLI, TUI, GUI, and cross-platform.
 
 Five GUI layouts, bilingual karaoke lyrics, shared preferences and queue caching are available.
-**0.4.2** adds notarized macOS app releases and keeps the lyric window's native blur visible when it loses focus.
+**0.4.3 (in development)** adds native Linux packages and repository publication, plus automatic macOS signing, notarization and release uploads in GitHub Actions.
 **0.4.1** adds single-file builds, native macOS playback, more player favorites and secure LAN pairing.
 See the [user guide](./docs/user-guide.md) for configuration and integrations.
 
@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-Native Linux packages are built separately as **`omnilyrics`** (GUI) and **`omnilyrics-cli`** (CLI/TUI), in DEB, RPM and Arch formats. See [Linux package installation](./build/linux/README.md) for local APT/DNF/pacman commands and AUR recipes. These packages are currently available as CI artifacts; the 0.4.2 release still contains portable ZIPs. The [Linux guide](./build/linux/README.md#maintainer-repositories) also covers adding the maintainer’s APT/DNF source and using AUR; those channels require first-time setup and are not live yet.
+Native Linux packages are built separately as **`omnilyrics`** (GUI) and **`omnilyrics-cli`** (CLI/TUI), in DEB, RPM and Arch formats. See [Linux package installation](./build/linux/README.md) for local APT/DNF/pacman commands and AUR recipes. These packages are currently available as CI artifacts; the 0.4.2 release still contains portable ZIPs. The [Linux guide](./build/linux/README.md#maintainer-repositories) also covers adding the maintainer’s APT/DNF source and using AUR; the APT/DNF source is configured but awaits its first package publication; AUR publication is not enabled.
 
 #### macOS
 
@@ -126,10 +126,10 @@ The 0.4.1 portable builds package the CLI and GUI as separate single executables
 > brew install media-control
 > ```
 
-macOS GUI builds also include an `OmniLyrics.app.zip` artifact for Finder, alongside the portable executable. The application menu, Dock name and About item use OmniLyrics. CI artifacts use ad-hoc signatures. For Developer ID signing, Apple notarization and Homebrew Cask distribution, see the [macOS release guide](./docs/macos-release.md). To package a local preview:
+macOS GUI builds also include an `OmniLyrics.app.zip` artifact for Finder, alongside the portable executable. The application menu, Dock name and About item use OmniLyrics. PR preview artifacts use ad-hoc signatures. For Developer ID signing, Apple notarization and Homebrew Cask distribution, see the [macOS release guide](./docs/macos-release.md). To package a local preview:
 
 ```bash
-bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
+bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.3
 ```
 
 Favorites support Apple Music (native on macOS), Spotify (configurable browser authorization), YesPlayMusic (QR authorization), and Cider. See [account setup](./docs/user-guide.md#favorites-and-account-access). Tray shortcuts include an emergency 100% scale reset and settings-window recovery.

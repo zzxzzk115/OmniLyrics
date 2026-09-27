@@ -9,7 +9,7 @@
 OmniLyrics：一次个人尝试，打造一直想要的歌词工具——提供 CLI、TUI、GUI，并支持跨平台。
 
 已支持五种 GUI 布局、双语逐字歌词、共享偏好与队列缓存。
-**0.4.2** 新增 macOS 公证应用发布，并修复歌词窗口失去焦点后原生毛玻璃消失的问题。
+**0.4.3（开发中）** 新增 Linux 原生包与软件源发布，并通过 GitHub Actions 自动完成 macOS 签名、公证和 Release 上传。
 **0.4.1** 新增单文件构建、macOS 原生播放接入、更多播放器的收藏功能与安全局域网配对。
 配置与集成方式见 [使用指南](./docs/user-guide.zh-CN.md)。
 
@@ -56,7 +56,7 @@ chmod +x OmniLyrics.Gui
 ./OmniLyrics.Gui
 ```
 
-Linux 原生包分别提供 **`omnilyrics`**（GUI）和 **`omnilyrics-cli`**（CLI/TUI），支持 DEB、RPM 与 Arch 格式。本地 APT/DNF/pacman 安装命令及 AUR 构建文件见 [Linux 软件包安装说明](./build/linux/README.zh-CN.md)。这些包目前通过 CI 构建产物提供，0.4.2 Release 仍提供便携 ZIP。[Linux 指南](./build/linux/README.zh-CN.md#维护者软件源)也说明了添加维护者 APT/DNF 源和使用 AUR 的方法；这些渠道仍需首次配置，目前尚未上线。
+Linux 原生包分别提供 **`omnilyrics`**（GUI）和 **`omnilyrics-cli`**（CLI/TUI），支持 DEB、RPM 与 Arch 格式。本地 APT/DNF/pacman 安装命令及 AUR 构建文件见 [Linux 软件包安装说明](./build/linux/README.zh-CN.md)。这些包目前通过 CI 构建产物提供，0.4.2 Release 仍提供便携 ZIP。[Linux 指南](./build/linux/README.zh-CN.md#维护者软件源)也说明了添加维护者 APT/DNF 源和使用 AUR 的方法；APT/DNF 源已配置，但仍等待首次软件包发布；AUR 发布尚未启用。
 
 #### macOS
 
@@ -126,10 +126,10 @@ install -m 755 OmniLyrics.Cli "$HOME/.local/bin/omnilyrics-cli"
 > brew install media-control
 > ```
 
-macOS GUI 构建会在便携单文件之外提供 `OmniLyrics.app.zip`，便于通过 Finder 启动；菜单、Dock 与“关于”均显示 OmniLyrics。CI 构建使用临时签名；Developer ID 正式签名、Apple 公证及 Homebrew Cask 发布流程见 [macOS 发布指南](./docs/macos-release.md)。可为本地预览打包：
+macOS GUI 构建会在便携单文件之外提供 `OmniLyrics.app.zip`，便于通过 Finder 启动；菜单、Dock 与“关于”均显示 OmniLyrics。PR 预览包使用临时签名；Developer ID 正式签名、Apple 公证及 Homebrew Cask 发布流程见 [macOS 发布指南](./docs/macos-release.zh-CN.md)。可为本地预览打包：
 
 ```bash
-bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.1
+bash build/macos/package.sh /path/to/OmniLyrics.Gui /path/to/package-output 0.4.3
 ```
 
 收藏支持 Apple Music（macOS 原生）、Spotify（可配置的浏览器授权）、YesPlayMusic（扫码授权）和 Cider，详见[账号配置](./docs/user-guide.zh-CN.md#收藏与账号授权)。托盘快捷菜单可恢复 100% 缩放并找回设置窗口。
